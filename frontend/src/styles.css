@@ -211,11 +211,11 @@ textarea:focus-visible {
 }
 
 .eyebrow {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--primary-strong);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.075em;
   text-transform: uppercase;
 }
 
@@ -233,7 +233,8 @@ h1 {
 }
 
 h2 {
-  font-size: clamp(1.22rem, 2vw, 1.65rem);
+  font-size: clamp(1.08rem, 1.55vw, 1.28rem);
+  line-height: 1.28;
 }
 
 h3 {
@@ -278,8 +279,7 @@ h3 {
   box-shadow: 10px 10px 24px rgba(160, 149, 134, 0.25), -10px -10px 24px rgba(255, 255, 255, 0.78);
 }
 
-.composer-header,
-.section-heading,
+.module-heading,
 .voice-title-row,
 .action-row {
   display: flex;
@@ -288,8 +288,17 @@ h3 {
   gap: 18px;
 }
 
+.module-heading {
+  min-height: 42px;
+}
+
+.module-heading .eyebrow {
+  color: rgba(79, 143, 131, 0.82);
+}
+
 .counter {
   color: var(--muted);
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
@@ -707,8 +716,7 @@ h3 {
     padding: 18px;
   }
 
-  .composer-header,
-  .section-heading,
+  .module-heading,
   .action-row,
   .voice-title-row {
     align-items: flex-start;

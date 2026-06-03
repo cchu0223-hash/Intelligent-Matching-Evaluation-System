@@ -57,7 +57,7 @@ function DebugPanel({ response }: { response: RecommendResponse }) {
 
   return (
     <section className="debug-panel" aria-label="匹配调试信息">
-      <div className="section-heading">
+      <div className="module-heading">
         <p className="eyebrow">Debug Signals</p>
         <h2>文本识别到的匹配信号</h2>
       </div>
@@ -315,7 +315,7 @@ export default function App() {
         </section>
 
         <section className="composer">
-          <div className="composer-header">
+          <div className="module-heading">
             <div>
               <p className="eyebrow">Input</p>
               <h2>配音文本</h2>
@@ -346,7 +346,7 @@ export default function App() {
 
         {response && sortedRecommendations.length ? (
           <section className="recommendations" aria-label="推荐音色">
-            <div className="section-heading">
+            <div className="module-heading">
               <p className="eyebrow">Recommendations</p>
               <h2>去重后 Top5 音色</h2>
             </div>
