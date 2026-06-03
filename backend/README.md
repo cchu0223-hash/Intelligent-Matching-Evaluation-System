@@ -22,6 +22,8 @@ FastAPI service for voice recommendation, feedback capture, and recommendation l
 
 Use `backend/config/local_rules.example.json` as a schema reference. The real rules file should be supplied through `VOICE_RULES_JSON` and must not be committed.
 
+`speaker_penalties` can be used to reduce over-exposed speakers without removing them from the candidate pool. It supports speaker-name contains matching, speaker-name regex, VCN exact matching, and VCN regex. The penalty is subtracted from the rule score and is surfaced in recommendation debug data.
+
 ## Audio URL Mapping
 
 The current audio CSV is encoded as `gb18030` and uses these fields:

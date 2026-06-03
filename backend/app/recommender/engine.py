@@ -25,6 +25,7 @@ DEFAULT_RULES: dict[str, Any] = {
     "audio_preferred_words": [],
     "audio_deprioritized_words": [],
     "speaker_dedupe_suffix_patterns": [],
+    "speaker_penalties": [],
     "price_pattern": r"\d+(\.\d+)?",
     "tech_freshness_excluded_l1": [],
     "tech_rank_patterns": [],
@@ -266,6 +267,36 @@ def marketing_focus_score(voice: VoiceRecord, has_marketing_hint: bool, rules: d
     return score
 
 
+def speaker_penalty(voice: VoiceRecord, rules: dict[str, Any]) -> float:
+    penalty = 0.0
+    speaker_name = voice.speaker_name or ""
+    normalized_name = normalize_text(speaker_name)
+    vcn = voice.vcn or ""
+    for item in rules.get("speaker_penalties", []):
+        if not isinstance(item, dict):
+            continue
+        amount = float(item.get("penalty", 0.0) or 0.0)
+        if amount <= 0:
+            continue
+        name_contains = str(item.get("name_contains", "") or "").strip()
+        name_pattern = str(item.get("name_pattern", "") or "").strip()
+        vcn_equals = str(item.get("vcn_equals", "") or "").strip()
+        vcn_pattern = str(item.get("vcn_pattern", "") or "").strip()
+
+        matched = False
+        if name_contains and normalize_text(name_contains) in normalized_name:
+            matched = True
+        if name_pattern and re.search(name_pattern, speaker_name):
+            matched = True
+        if vcn_equals and vcn_equals == vcn:
+            matched = True
+        if vcn_pattern and re.search(vcn_pattern, vcn):
+            matched = True
+        if matched:
+            penalty += amount
+    return penalty
+
+
 def build_keyword_hits(text: str, keyword_rows: list[KeywordRow], rules: dict[str, Any]) -> dict[str, Any]:
     normalized = normalize_text(text)
     l1_hits: Counter[str] = Counter()
@@ -349,8 +380,9 @@ def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any], rules: dict
     marketing_score = marketing_focus_score(voice, hit_info["has_marketing_hint"], rules)
     broad_penalty = over_broad_penalty(voice.scene_l1, voice.scene_l2)
     service_penalty = service_mismatch_penalty(voice.scene_l1, hit_info["has_service_hint"], rules)
+    speaker_penalty_score = speaker_penalty(voice, rules)
     tie_breaker = max(0.0, (1000.0 - min(voice.sort_value, 1000.0)) / 1000.0)
-    score = l1_score + l2_score + attr_score + lang_score + tech_score + marketing_score + tie_breaker - broad_penalty - service_penalty
+    score = l1_score + l2_score + attr_score + lang_score + tech_score + marketing_score + tie_breaker - broad_penalty - service_penalty - speaker_penalty_score
     return score, {
         "matched_l1": matched_l1,
         "matched_l2": matched_l2,
@@ -362,6 +394,7 @@ def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any], rules: dict
         "marketing_focus_score": marketing_score,
         "broad_penalty": broad_penalty,
         "service_penalty": service_penalty,
+        "speaker_penalty": speaker_penalty_score,
         "tie_breaker": tie_breaker,
     }
 

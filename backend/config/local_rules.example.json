@@ -38,6 +38,15 @@
   "audio_preferred_words": [],
   "audio_deprioritized_words": [],
   "speaker_dedupe_suffix_patterns": [],
+  "speaker_penalties": [
+    {
+      "name_contains": "示例发音人名称片段",
+      "name_pattern": "",
+      "vcn_equals": "",
+      "vcn_pattern": "",
+      "penalty": 1.2
+    }
+  ],
   "price_pattern": "\\d+(\\.\\d+)?",
   "tech_freshness_excluded_l1": [],
   "tech_rank_patterns": [
