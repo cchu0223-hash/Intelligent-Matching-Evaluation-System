@@ -81,7 +81,7 @@ function DebugPanel({ response }: { response: RecommendResponse }) {
         <div>
           <h3>属性信号</h3>
           <p>
-            童声 {debug.has_child_hint ? '命中' : '未命中'} · 方言 {debug.has_dialect_hint ? '命中' : '未命中'}
+            属性 A {debug.has_child_hint ? '命中' : '未命中'} · 属性 B {debug.has_dialect_hint ? '命中' : '未命中'}
           </p>
         </div>
       </div>
@@ -271,7 +271,7 @@ export default function App() {
         </div>
         <textarea
           className="script-input"
-          placeholder="粘贴一段真实配音文本，例如商品口播、课程讲解、新闻播报、故事旁白等。"
+          placeholder="粘贴一段真实配音文本，用于评测系统推荐出的音色是否合适。"
           value={text}
           onChange={(event) => setText(event.target.value)}
         />

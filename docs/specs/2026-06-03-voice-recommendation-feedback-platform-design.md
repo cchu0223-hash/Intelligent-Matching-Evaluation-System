@@ -124,19 +124,19 @@ POST /api/recommend
       "asset_id": "vcn_xxx",
       "vcn": "vcn_xxx",
       "speaker_name": "发音人名称",
-      "scene_l1": ["商业广告"],
-      "scene_l2": ["营销风格"],
+      "scene_l1": ["一级标签示例"],
+      "scene_l2": ["二级标签示例"],
       "tags": {
-        "scene_l1": ["商业广告"],
-        "scene_l2": ["营销风格"],
-        "attributes": ["地道方言"],
-        "language": "普通话",
+        "scene_l1": ["一级标签示例"],
+        "scene_l2": ["二级标签示例"],
+        "attributes": ["属性标签示例"],
+        "language": "语言示例",
         "gender": "女",
-        "tech_desc": "超拟人 Pro"
+        "tech_desc": "技术标签示例"
       },
       "gender": "女",
-      "language": "普通话",
-      "tech_desc": "超拟人 Pro",
+      "language": "语言示例",
+      "tech_desc": "技术标签示例",
       "audio_url": null
     }
   ]
@@ -215,7 +215,7 @@ GET /api/health
 字段：
 - `scene_l1`：一级场景标签。
 - `scene_l2`：二级场景标签。
-- `attributes`：属性标签，例如 `童声`、`地道方言`。
+- `attributes`：属性标签。
 - `language`：语言。
 - `gender`：性别。
 - `tech_desc`：技术标签或技术描述。

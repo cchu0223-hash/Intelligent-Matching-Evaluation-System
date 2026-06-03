@@ -34,6 +34,7 @@ class Settings:
     voice_taxonomy_xlsx: Path
     voice_keywords_xlsx: Path
     voice_audio_csv: Path | None
+    voice_rules_json: Path | None
     database_path: Path
     deepseek_api_key: str
     deepseek_api_base_url: str
@@ -47,7 +48,6 @@ class Settings:
 
 def get_settings() -> Settings:
     repo = _repo_root()
-    workspace = repo.parent
     origins = [
         item.strip()
         for item in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
@@ -56,16 +56,19 @@ def get_settings() -> Settings:
     return Settings(
         repo_root=repo,
         voice_library_xlsx=_resolve_path(
-            os.getenv("VOICE_LIBRARY_XLSX"), workspace / "音库（已标注）.xlsx"
+            os.getenv("VOICE_LIBRARY_XLSX"), repo / "backend/config/voice-library.xlsx"
         ),
         voice_taxonomy_xlsx=_resolve_path(
-            os.getenv("VOICE_TAXONOMY_XLSX"), workspace / "音色标签体系.xlsx"
+            os.getenv("VOICE_TAXONOMY_XLSX"), repo / "backend/config/voice-taxonomy.xlsx"
         ),
         voice_keywords_xlsx=_resolve_path(
-            os.getenv("VOICE_KEYWORDS_XLSX"), workspace / "音色场景关键词库.xlsx"
+            os.getenv("VOICE_KEYWORDS_XLSX"), repo / "backend/config/voice-keywords.xlsx"
         ),
         voice_audio_csv=_resolve_path(
-            os.getenv("VOICE_AUDIO_CSV"), workspace / "content_speaker_202606031548.csv"
+            os.getenv("VOICE_AUDIO_CSV"), repo / "backend/config/voice-audio-map.csv"
+        ),
+        voice_rules_json=_resolve_path(
+            os.getenv("VOICE_RULES_JSON"), repo / "backend/config/local_rules.json"
         ),
         database_path=_resolve_path(os.getenv("DATABASE_PATH"), repo / "backend/data/evaluation.db"),
         deepseek_api_key=os.getenv("DEEPSEEK_API_KEY", "").strip(),

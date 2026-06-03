@@ -1,0 +1,49 @@
+{
+  "language_hints": [],
+  "ambiguous_keywords": [],
+  "attribute_tags": {
+    "child": "",
+    "dialect": "",
+    "multi_language": ""
+  },
+  "attribute_hints": {
+    "child": [],
+    "dialect": []
+  },
+  "intent_hints": {
+    "formal": [],
+    "service": [],
+    "marketing": []
+  },
+  "service_scene_tags": [],
+  "marketing_focus": {
+    "l1_tags": [],
+    "l2_tags": [],
+    "short_video_tags": []
+  },
+  "marketing_backfill": [
+    {
+      "level": "l1",
+      "tag": "一级标签名称",
+      "weight": 1.0
+    }
+  ],
+  "formal_backfill": [
+    {
+      "level": "l1",
+      "tag": "一级标签名称",
+      "weight": 1.0
+    }
+  ],
+  "audio_preferred_words": [],
+  "audio_deprioritized_words": [],
+  "speaker_dedupe_suffix_patterns": [],
+  "price_pattern": "\\d+(\\.\\d+)?",
+  "tech_freshness_excluded_l1": [],
+  "tech_rank_patterns": [
+    {
+      "pattern": "版本正则",
+      "rank": 1.0
+    }
+  ]
+}

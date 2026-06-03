@@ -37,6 +37,8 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+Copy `backend/config/local_rules.example.json` to a local untracked rules file and set `VOICE_RULES_JSON` to that path. Do not commit the real rules file.
+
 ## Environment
 
 Set these in `backend/.env` or your deployment environment:
@@ -44,13 +46,16 @@ Set these in `backend/.env` or your deployment environment:
 - `DEEPSEEK_API_KEY`: enables online DeepSeek rerank. If empty, the service falls back to rule-only ranking.
 - `DEEPSEEK_API_BASE_URL`: default `https://api.deepseek.com`.
 - `DEEPSEEK_MODEL`: default `deepseek-v4-flash`.
-- `VOICE_LIBRARY_XLSX`: default `../音库（已标注）.xlsx`.
-- `VOICE_TAXONOMY_XLSX`: default `../音色标签体系.xlsx`.
-- `VOICE_KEYWORDS_XLSX`: default `../音色场景关键词库.xlsx`.
-- `VOICE_AUDIO_CSV`: default `../content_speaker_202606031548.csv`. This CSV is read as `gb18030` and maps `vcn` to sample `audio_url`.
+- `VOICE_LIBRARY_XLSX`: absolute path to the local voice library workbook.
+- `VOICE_TAXONOMY_XLSX`: absolute path to the local tag taxonomy workbook.
+- `VOICE_KEYWORDS_XLSX`: absolute path to the local keyword workbook.
+- `VOICE_AUDIO_CSV`: absolute path to the local sample-audio mapping CSV.
+- `VOICE_RULES_JSON`: absolute path to the local matching-rules JSON. Keep this file out of Git.
 - `DATABASE_PATH`: default `backend/data/evaluation.db`.
 - `CORS_ORIGINS`: default `http://localhost:5173`.
 
 ## Data Policy
 
 Large Excel files, generated recommendation outputs, API keys, and local database files should not be committed. Keep source data in the existing workspace or provide paths through environment variables.
+
+Concrete voice labels, VCN values, sample-audio URLs, keyword rules, and local data paths must stay outside GitHub. Use environment variables and ignored local files for those values.

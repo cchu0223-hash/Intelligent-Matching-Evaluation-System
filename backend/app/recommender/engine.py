@@ -12,45 +12,39 @@ from openpyxl import load_workbook
 from app.recommender.deepseek import normalize_text, rerank_with_deepseek
 from app.recommender.models import KeywordRow, Recommendation, TagTaxonomy, VoiceRecord
 
-SCENE_TAG_MULTI_LANG = "多语种"
-ATTR_TAG_DIALECT = "地道方言"
-ATTR_TAG_CHILD = "童声"
-
-LANG_HINTS = [
-    "普通话",
-    "英语",
-    "粤语",
-    "方言",
-    "日语",
-    "韩语",
-    "法语",
-    "德语",
-    "俄语",
-    "西班牙语",
-    "意大利语",
-    "阿拉伯语",
-]
-ATTR_HINTS_CHILD = ["儿童", "童话", "小朋友", "宝宝", "幼儿", "少儿", "儿歌"]
-ATTR_HINTS_DIALECT = ["方言", "家乡话", "本地方言", "地方口音", "乡音"]
-AMBIGUOUS_KEYWORDS = {
-    "天津",
-    "北京",
-    "上海",
-    "广州",
-    "深圳",
-    "杭州",
-    "南京",
-    "苏州",
-    "成都",
-    "重庆",
-    "武汉",
-    "西安",
-    "长沙",
-    "郑州",
+DEFAULT_RULES: dict[str, Any] = {
+    "language_hints": [],
+    "ambiguous_keywords": [],
+    "attribute_tags": {"child": "", "dialect": "", "multi_language": ""},
+    "attribute_hints": {"child": [], "dialect": []},
+    "intent_hints": {"formal": [], "service": [], "marketing": []},
+    "service_scene_tags": [],
+    "marketing_focus": {"l1_tags": [], "l2_tags": [], "short_video_tags": []},
+    "marketing_backfill": [],
+    "formal_backfill": [],
+    "audio_preferred_words": [],
+    "audio_deprioritized_words": [],
+    "speaker_dedupe_suffix_patterns": [],
+    "price_pattern": r"\d+(\.\d+)?",
+    "tech_freshness_excluded_l1": [],
+    "tech_rank_patterns": [],
 }
-FORMAL_HINTS = ["教授", "大学", "副总经理", "总经理", "出版社", "委员会", "会议", "通知", "课程", "章", "学术", "主任", "报告", "发布"]
-SERVICE_HINTS = ["客服", "回访", "热线", "来电", "按键", "咨询", "人工服务", "工单", "售后", "办理", "服务中心", "转接"]
-MARKETING_HINTS = ["活动价", "特价", "限时", "抢购", "下单", "包邮", "福利", "秒杀", "优惠", "折扣", "立减", "满减", "库存", "仅余", "先拍先发", "多拍多省", "囤", "送家人", "直播", "到手价", "划算"]
+
+
+def load_rule_settings(path: Path | None) -> dict[str, Any]:
+    if not path or not path.exists():
+        return DEFAULT_RULES.copy()
+    with path.open("r", encoding="utf-8") as file:
+        loaded = json.load(file)
+    rules = DEFAULT_RULES.copy()
+    for key, value in loaded.items():
+        if isinstance(value, dict) and isinstance(rules.get(key), dict):
+            merged = dict(rules[key])
+            merged.update(value)
+            rules[key] = merged
+        else:
+            rules[key] = value
+    return rules
 
 
 def split_tags(value: Any) -> list[str]:
@@ -60,11 +54,11 @@ def split_tags(value: Any) -> list[str]:
     return [part.strip() for part in parts if part and part.strip()]
 
 
-def keyword_weight(keyword: str) -> float:
+def keyword_weight(keyword: str, rules: dict[str, Any]) -> float:
     value = (keyword or "").strip()
     if not value:
         return 0.0
-    if value in AMBIGUOUS_KEYWORDS:
+    if value in set(rules.get("ambiguous_keywords", [])):
         return 0.15
     if len(value) <= 1:
         return 0.1
@@ -184,11 +178,11 @@ def build_augmented_keyword_rows(keyword_rows: list[KeywordRow], taxonomy: TagTa
     return merged
 
 
-def audio_choice_priority(row: dict[str, str]) -> tuple[int, int, int]:
+def audio_choice_priority(row: dict[str, str], rules: dict[str, Any]) -> tuple[int, int, int]:
     name = row.get("speaker_name", "")
     text = row.get("audio_text", "")
-    preferred_words = ["默认", "中立", "自然", "品质", "旁白"]
-    emotional_words = ["撒娇", "抱歉", "悲伤", "困惑", "严肃", "高兴"]
+    preferred_words = rules.get("audio_preferred_words", [])
+    emotional_words = rules.get("audio_deprioritized_words", [])
     preferred = 0 if any(word in name or word in text for word in preferred_words) else 1
     emotional = 1 if any(word in name for word in emotional_words) else 0
     try:
@@ -198,7 +192,7 @@ def audio_choice_priority(row: dict[str, str]) -> tuple[int, int, int]:
     return (preferred, emotional, speaker_no)
 
 
-def load_audio_url_map(csv_path: Path | None) -> dict[str, str]:
+def load_audio_url_map(csv_path: Path | None, rules: dict[str, Any]) -> dict[str, str]:
     if not csv_path or not csv_path.exists():
         return {}
 
@@ -215,70 +209,64 @@ def load_audio_url_map(csv_path: Path | None) -> dict[str, str]:
 
     audio_map: dict[str, str] = {}
     for vcn, rows in rows_by_vcn.items():
-        selected = sorted(rows, key=audio_choice_priority)[0]
+        selected = sorted(rows, key=lambda row: audio_choice_priority(row, rules))[0]
         audio_map[vcn] = selected["audio_url"]
     return audio_map
 
 
-def tech_rank(tech_desc: str) -> float:
+def tech_rank(tech_desc: str, rules: dict[str, Any]) -> float:
     value = tech_desc or ""
-    if "X7.0" in value:
-        return 7.0
-    if "X6.0" in value:
-        return 6.0
-    if "X5.0" in value:
-        return 5.0
-    if "X4.0（超拟人）" in value:
-        return 4.6
-    if "X4.0" in value:
-        return 4.0
-    if "V4.0" in value:
-        return 3.6
-    if "V3.0" in value:
-        return 3.1
-    if "X3.0" in value:
-        return 3.0
-    if "X2.0" in value:
-        return 2.0
-    if "X1.0" in value:
-        return 1.0
+    for item in rules.get("tech_rank_patterns", []):
+        pattern = item.get("pattern")
+        rank = item.get("rank")
+        if pattern and rank is not None and re.search(pattern, value):
+            return float(rank)
+    match = re.search(r"[A-Za-z](\d+(?:\.\d+)?)", value)
+    if match:
+        return float(match.group(1))
     return 0.0
 
 
-def tech_freshness_score(tech_desc: str, language: str, scene_l1: list[str]) -> float:
-    rank = tech_rank(tech_desc)
+def tech_freshness_score(tech_desc: str, language: str, scene_l1: list[str], rules: dict[str, Any]) -> float:
+    rank = tech_rank(tech_desc, rules)
     if rank <= 0:
         return 0.0
-    mainstream = language == "普通话" and SCENE_TAG_MULTI_LANG not in scene_l1 and ATTR_TAG_DIALECT not in scene_l1
+    excluded = set(rules.get("tech_freshness_excluded_l1", []))
+    mainstream = bool(language) and not any(tag in excluded for tag in scene_l1)
     return (0.18 if mainstream else 0.08) * rank
 
 
-def service_mismatch_penalty(scene_l1: list[str], has_service_hint: bool) -> float:
+def service_mismatch_penalty(scene_l1: list[str], has_service_hint: bool, rules: dict[str, Any]) -> float:
     if has_service_hint:
         return 0.0
-    return 1.4 if "客服对话" in scene_l1 else 0.0
+    service_tags = set(rules.get("service_scene_tags", []))
+    return 1.4 if any(tag in service_tags for tag in scene_l1) else 0.0
 
 
 def over_broad_penalty(scene_l1: list[str], scene_l2: list[str]) -> float:
     return max(0, len(scene_l1) - 3) * 0.45 + max(0, len(scene_l2) - 6) * 0.18
 
 
-def marketing_focus_score(voice: VoiceRecord, has_marketing_hint: bool) -> float:
+def marketing_focus_score(voice: VoiceRecord, has_marketing_hint: bool, rules: dict[str, Any]) -> float:
     if not has_marketing_hint:
         return 0.0
     score = 0.0
-    if "商业广告" in voice.scene_l1 and len(voice.scene_l1) <= 3:
+    focus = rules.get("marketing_focus", {})
+    l1_tags = set(focus.get("l1_tags", []))
+    l2_tags = set(focus.get("l2_tags", []))
+    short_video_tags = set(focus.get("short_video_tags", []))
+    if any(tag in l1_tags for tag in voice.scene_l1) and len(voice.scene_l1) <= 3:
         score += 3.0
-    if "营销风格" in voice.scene_l2 and len(voice.scene_l2) <= 5:
+    if any(tag in l2_tags for tag in voice.scene_l2) and len(voice.scene_l2) <= 5:
         score += 2.0
-    if "短视频" in voice.scene_l1 and len(voice.scene_l1) <= 3:
+    if any(tag in short_video_tags for tag in voice.scene_l1) and len(voice.scene_l1) <= 3:
         score += 1.0
     if len(voice.scene_l1) >= 6 or len(voice.scene_l2) >= 10:
         score -= 5.0
     return score
 
 
-def build_keyword_hits(text: str, keyword_rows: list[KeywordRow]) -> dict[str, Any]:
+def build_keyword_hits(text: str, keyword_rows: list[KeywordRow], rules: dict[str, Any]) -> dict[str, Any]:
     normalized = normalize_text(text)
     l1_hits: Counter[str] = Counter()
     l2_hits: Counter[str] = Counter()
@@ -287,7 +275,7 @@ def build_keyword_hits(text: str, keyword_rows: list[KeywordRow]) -> dict[str, A
         matched = [keyword for keyword in row.keywords if keyword and keyword in normalized]
         if not matched:
             continue
-        weighted_count = sum(keyword_weight(keyword) for keyword in matched)
+        weighted_count = sum(keyword_weight(keyword, rules) for keyword in matched)
         if weighted_count <= 0:
             continue
         l1_hits[row.scene_l1] += weighted_count
@@ -303,25 +291,31 @@ def build_keyword_hits(text: str, keyword_rows: list[KeywordRow]) -> dict[str, A
             }
         )
 
-    marketing_score = sum(1 for keyword in MARKETING_HINTS if keyword in normalized)
-    price_hit = bool(re.search(r"\d+(\.\d+)?\s*(块|元)", normalized) or re.search(r"\d+(\.\d+)?\s*[\u4e00-\u9fa5]{0,2}(包邮|到家)", normalized))
+    intent_hints = rules.get("intent_hints", {})
+    marketing_hints = intent_hints.get("marketing", [])
+    service_hints = intent_hints.get("service", [])
+    formal_hints = intent_hints.get("formal", [])
+    attribute_hints = rules.get("attribute_hints", {})
+    marketing_score = sum(1 for keyword in marketing_hints if keyword in normalized)
+    price_pattern = rules.get("price_pattern", r"\d+(\.\d+)?")
+    price_hit = bool(re.search(price_pattern, normalized))
     return {
         "l1_hits": l1_hits,
         "l2_hits": l2_hits,
         "matched_pairs": matched_pairs,
-        "lang_hits": [lang for lang in LANG_HINTS if lang in normalized],
-        "has_child_hint": any(keyword in normalized for keyword in ATTR_HINTS_CHILD),
-        "has_dialect_hint": any(keyword in normalized for keyword in ATTR_HINTS_DIALECT),
-        "has_service_hint": any(keyword in normalized for keyword in SERVICE_HINTS),
+        "lang_hits": [lang for lang in rules.get("language_hints", []) if lang in normalized],
+        "has_child_hint": any(keyword in normalized for keyword in attribute_hints.get("child", [])),
+        "has_dialect_hint": any(keyword in normalized for keyword in attribute_hints.get("dialect", [])),
+        "has_service_hint": any(keyword in normalized for keyword in service_hints),
         "has_marketing_hint": marketing_score >= 2 or (marketing_score >= 1 and price_hit),
         "marketing_score": marketing_score,
         "price_hit": price_hit,
-        "formal_score": sum(1 for keyword in FORMAL_HINTS if keyword in normalized),
+        "formal_score": sum(1 for keyword in formal_hints if keyword in normalized),
         "scene_weight_total": float(sum(l1_hits.values()) + sum(l2_hits.values())),
     }
 
 
-def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any]) -> tuple[float, dict[str, Any]]:
+def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any], rules: dict[str, Any]) -> tuple[float, dict[str, Any]]:
     l1_score = 0.0
     l2_score = 0.0
     attr_score = 0.0
@@ -338,25 +332,23 @@ def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any]) -> tuple[fl
             l2_score += 5.0 * hit_info["l2_hits"][tag]
             matched_l2.append(tag)
 
+    child_tag = rules.get("attribute_tags", {}).get("child", "")
+    dialect_tag = rules.get("attribute_tags", {}).get("dialect", "")
     if hit_info["lang_hits"]:
         if voice.language in hit_info["lang_hits"]:
-            lang_score += 4.0
-        elif "普通话" in hit_info["lang_hits"] and voice.language == "普通话":
-            lang_score += 4.0
-        elif "方言" in hit_info["lang_hits"] and voice.language == "方言":
             lang_score += 4.0
         elif voice.language:
             lang_score -= 0.5
 
-    if hit_info["has_child_hint"] and (ATTR_TAG_CHILD in voice.scene_l1 or ATTR_TAG_CHILD in voice.scene_l2):
+    if child_tag and hit_info["has_child_hint"] and (child_tag in voice.scene_l1 or child_tag in voice.scene_l2):
         attr_score += 2.5
-    if hit_info["has_dialect_hint"] and (ATTR_TAG_DIALECT in voice.scene_l1 or ATTR_TAG_DIALECT in voice.scene_l2 or voice.language == "方言"):
+    if dialect_tag and hit_info["has_dialect_hint"] and (dialect_tag in voice.scene_l1 or dialect_tag in voice.scene_l2 or voice.language == dialect_tag):
         attr_score += 2.5
 
-    tech_score = tech_freshness_score(voice.tech_desc, voice.language, voice.scene_l1)
-    marketing_score = marketing_focus_score(voice, hit_info["has_marketing_hint"])
+    tech_score = tech_freshness_score(voice.tech_desc, voice.language, voice.scene_l1, rules)
+    marketing_score = marketing_focus_score(voice, hit_info["has_marketing_hint"], rules)
     broad_penalty = over_broad_penalty(voice.scene_l1, voice.scene_l2)
-    service_penalty = service_mismatch_penalty(voice.scene_l1, hit_info["has_service_hint"])
+    service_penalty = service_mismatch_penalty(voice.scene_l1, hit_info["has_service_hint"], rules)
     tie_breaker = max(0.0, (1000.0 - min(voice.sort_value, 1000.0)) / 1000.0)
     score = l1_score + l2_score + attr_score + lang_score + tech_score + marketing_score + tie_breaker - broad_penalty - service_penalty
     return score, {
@@ -374,26 +366,20 @@ def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any]) -> tuple[fl
     }
 
 
-def voice_attributes(voice: VoiceRecord) -> list[str]:
+def voice_attributes(voice: VoiceRecord, rules: dict[str, Any]) -> list[str]:
     attrs: list[str] = []
-    if ATTR_TAG_CHILD in voice.scene_l1 or ATTR_TAG_CHILD in voice.scene_l2:
-        attrs.append(ATTR_TAG_CHILD)
-    if ATTR_TAG_DIALECT in voice.scene_l1 or ATTR_TAG_DIALECT in voice.scene_l2 or voice.language == "方言":
-        attrs.append(ATTR_TAG_DIALECT)
+    child_tag = rules.get("attribute_tags", {}).get("child", "")
+    dialect_tag = rules.get("attribute_tags", {}).get("dialect", "")
+    if child_tag and (child_tag in voice.scene_l1 or child_tag in voice.scene_l2):
+        attrs.append(child_tag)
+    if dialect_tag and (dialect_tag in voice.scene_l1 or dialect_tag in voice.scene_l2 or voice.language == dialect_tag):
+        attrs.append(dialect_tag)
     return attrs
 
 
-def speaker_dedupe_key(speaker_name: str) -> str:
+def speaker_dedupe_key(speaker_name: str, rules: dict[str, Any]) -> str:
     value = normalize_text(speaker_name)
-    suffix_patterns = [
-        r"[-_ ]?超拟人（?Pro）?$",
-        r"[-_ ]?超拟人$",
-        r"[-_ ]?Pro$",
-        r"[-_ ]?pro$",
-        r"（Pro）$",
-        r"\(Pro\)$",
-    ]
-    for pattern in suffix_patterns:
+    for pattern in rules.get("speaker_dedupe_suffix_patterns", []):
         value = re.sub(pattern, "", value).strip()
     return value or speaker_name
 
@@ -406,28 +392,33 @@ class VoiceRecommender:
         voice_taxonomy_xlsx: Path,
         voice_keywords_xlsx: Path,
         voice_audio_csv: Path | None,
+        voice_rules_json: Path | None,
         deepseek_api_key: str,
         deepseek_api_base_url: str,
         deepseek_model: str,
         analysis_max_chars: int,
     ) -> None:
+        self.rules = load_rule_settings(voice_rules_json)
         self.taxonomy = load_tag_taxonomy(voice_taxonomy_xlsx)
         self.voices = load_voice_records(voice_library_xlsx, self.taxonomy)
         keyword_rows = load_keyword_rows(voice_keywords_xlsx, self.taxonomy)
         self.keyword_rows = build_augmented_keyword_rows(keyword_rows, self.taxonomy)
-        self.audio_url_map = load_audio_url_map(voice_audio_csv)
+        self.audio_url_map = load_audio_url_map(voice_audio_csv, self.rules)
         self.deepseek_api_key = deepseek_api_key
         self.deepseek_api_base_url = deepseek_api_base_url
         self.deepseek_model = deepseek_model
         self.analysis_max_chars = analysis_max_chars
 
     def build_rule_candidates(self, text: str, candidate_size: int) -> dict[str, Any]:
-        hit_info = build_keyword_hits(text, self.keyword_rows)
+        hit_info = build_keyword_hits(text, self.keyword_rows, self.rules)
         if hit_info["has_marketing_hint"]:
-            hit_info["l1_hits"]["商业广告"] += 2.6
-            hit_info["l1_hits"]["短视频"] += 1.0
-            hit_info["l2_hits"]["营销风格"] += 2.0
-            hit_info["l2_hits"]["口播"] += 1.2
+            for item in self.rules.get("marketing_backfill", []):
+                tag = item.get("tag")
+                weight = float(item.get("weight", 0))
+                if item.get("level") == "l1" and tag:
+                    hit_info["l1_hits"][tag] += weight
+                if item.get("level") == "l2" and tag:
+                    hit_info["l2_hits"][tag] += weight
             hit_info["fallback_hint"] = "marketing_backfill"
 
         weak_scene = hit_info["scene_weight_total"] < 0.8
@@ -435,9 +426,13 @@ class VoiceRecommender:
             hit_info["l1_hits"] = Counter({key: value for key, value in hit_info["l1_hits"].items() if value >= 0.8})
             hit_info["l2_hits"] = Counter({key: value for key, value in hit_info["l2_hits"].items() if value >= 0.8})
             if hit_info["formal_score"] >= 2 and not hit_info["has_marketing_hint"]:
-                hit_info["l1_hits"]["新闻播报"] += 1.2
-                hit_info["l1_hits"]["解说"] += 1.0
-                hit_info["l1_hits"]["教育课件"] += 0.7
+                for item in self.rules.get("formal_backfill", []):
+                    tag = item.get("tag")
+                    weight = float(item.get("weight", 0))
+                    if item.get("level") == "l1" and tag:
+                        hit_info["l1_hits"][tag] += weight
+                    if item.get("level") == "l2" and tag:
+                        hit_info["l2_hits"][tag] += weight
                 hit_info["fallback_hint"] = "formal_narration_backfill"
             elif "fallback_hint" not in hit_info:
                 hit_info["fallback_hint"] = "weak_scene_noisy_drop"
@@ -446,7 +441,7 @@ class VoiceRecommender:
 
         scored = []
         for voice in self.voices:
-            score, reason = compute_rule_score(voice, hit_info)
+            score, reason = compute_rule_score(voice, hit_info, self.rules)
             scored.append((voice, score, reason))
         scored.sort(key=lambda item: item[1], reverse=True)
 
@@ -473,7 +468,7 @@ class VoiceRecommender:
                     "language": voice.language,
                     "scene_l1": voice.scene_l1,
                     "scene_l2": voice.scene_l2,
-                    "attributes": voice_attributes(voice),
+                    "attributes": voice_attributes(voice, self.rules),
                     "tech_desc": voice.tech_desc,
                     "rule_score": round(score, 6),
                     "rule_reason": reason,
@@ -562,8 +557,7 @@ class VoiceRecommender:
             "llm_raw": llm_raw,
         }
 
-    @staticmethod
-    def _merge_ranking(candidates: list[dict[str, Any]], llm_ranked: list[dict[str, Any]] | None, top_k: int, rule_weight: float) -> list[dict[str, Any]]:
+    def _merge_ranking(self, candidates: list[dict[str, Any]], llm_ranked: list[dict[str, Any]] | None, top_k: int, rule_weight: float) -> list[dict[str, Any]]:
         by_index = {candidate["candidate_index"]: candidate for candidate in candidates}
         merged: list[dict[str, Any]] = []
         if llm_ranked:
@@ -599,7 +593,7 @@ class VoiceRecommender:
         deduped: list[dict[str, Any]] = []
         seen_speakers: set[str] = set()
         for item in merged:
-            dedupe_key = speaker_dedupe_key(item["speaker_name"])
+            dedupe_key = speaker_dedupe_key(item["speaker_name"], self.rules)
             if dedupe_key in seen_speakers:
                 continue
             seen_speakers.add(dedupe_key)
