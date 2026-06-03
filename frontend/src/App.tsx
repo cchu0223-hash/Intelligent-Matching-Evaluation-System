@@ -320,19 +320,19 @@ export default function App() {
               <p className="eyebrow">Input</p>
               <h2>配音文本</h2>
             </div>
-            <div className="composer-tools">
-              <button className="ghost-button" disabled={!text.length || isLoading} type="button" onClick={handleClearText}>
-                清空
-              </button>
-              <span className={remaining < 0 ? 'counter danger' : 'counter'}>{text.length} / {MAX_TEXT_LENGTH}</span>
-            </div>
+            <span className={remaining < 0 ? 'counter danger' : 'counter'}>{text.length} / {MAX_TEXT_LENGTH}</span>
           </div>
-          <textarea
-            className="script-input"
-            placeholder="粘贴一段真实配音文本，用于评测系统推荐出的音色是否合适。"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-          />
+          <div className="script-input-wrap">
+            <textarea
+              className="script-input"
+              placeholder="粘贴一段真实配音文本，用于评测系统推荐出的音色是否合适。"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+            />
+            <button className="ghost-button clear-text-button" disabled={!text.length || isLoading} type="button" onClick={handleClearText}>
+              清空
+            </button>
+          </div>
           <div className="action-row">
             <button className="primary-button" disabled={!canRecommend} type="button" onClick={handleRecommend}>
               {isLoading ? '匹配中' : '智能匹配'}

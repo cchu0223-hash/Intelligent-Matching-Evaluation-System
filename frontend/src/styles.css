@@ -298,11 +298,15 @@ h3 {
   color: var(--danger);
 }
 
+.script-input-wrap {
+  position: relative;
+  margin-top: 18px;
+}
+
 .script-input {
   width: 100%;
   min-height: 230px;
-  margin-top: 18px;
-  padding: 18px;
+  padding: 18px 18px 56px;
   resize: vertical;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -315,12 +319,6 @@ h3 {
 
 .script-input::placeholder {
   color: #91a29e;
-}
-
-.composer-tools {
-  display: flex;
-  gap: 10px;
-  align-items: center;
 }
 
 .action-row {
@@ -366,6 +364,16 @@ h3 {
   background: rgba(255, 255, 255, 0.46);
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.clear-text-button {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  min-height: 32px;
+  border-color: rgba(79, 143, 131, 0.24);
+  background: rgba(248, 251, 250, 0.86);
+  box-shadow: 0 8px 18px rgba(37, 54, 52, 0.08);
 }
 
 .primary-button:hover:not(:disabled),
