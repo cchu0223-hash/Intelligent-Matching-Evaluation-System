@@ -1,3 +1,10 @@
+export type MatchedTags = {
+  scene_l1: string[];
+  scene_l2: string[];
+  attributes: string[];
+  language: boolean;
+};
+
 export type Recommendation = {
   rank: number;
   speaker_name: string;
@@ -7,6 +14,7 @@ export type Recommendation = {
   scene_l1: string[];
   scene_l2: string[];
   attributes: string[];
+  matched_tags: MatchedTags;
   tech_desc: string;
   audio_url: string | null;
   score: number | null;

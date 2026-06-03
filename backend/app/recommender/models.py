@@ -42,6 +42,7 @@ class Recommendation:
     scene_l1: list[str]
     scene_l2: list[str]
     attributes: list[str]
+    matched_tags: dict[str, Any]
     tech_desc: str
     audio_url: str | None
     score: float | None

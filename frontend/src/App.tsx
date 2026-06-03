@@ -37,12 +37,13 @@ function renderValue(value: unknown): string {
   return String(value);
 }
 
-function tagList(tags: string[], empty = '未标注') {
+function tagList(tags: string[], matchedTags: string[] = [], empty = '未标注') {
   if (!tags.length) {
     return <span className="tag tag-muted">{empty}</span>;
   }
+  const matched = new Set(matchedTags);
   return tags.map((tag) => (
-    <span className="tag" key={tag}>
+    <span className={matched.has(tag) ? 'tag tag-matched' : 'tag'} key={tag}>
       {tag}
     </span>
   ));
@@ -167,21 +168,21 @@ function RecommendationCard({
 
         <div className="meta-line">
           <span>{item.gender}</span>
-          <span>{item.language || '语言未标注'}</span>
+          <span className={item.matched_tags.language ? 'meta-matched' : undefined}>{item.language || '语言未标注'}</span>
           <span>{item.tech_desc || '技术标签未标注'}</span>
         </div>
 
         <div className="tag-group" aria-label="一级场景标签">
           <span className="tag-label">一级</span>
-          {tagList(item.scene_l1)}
+          {tagList(item.scene_l1, item.matched_tags.scene_l1)}
         </div>
         <div className="tag-group" aria-label="二级场景标签">
           <span className="tag-label">二级</span>
-          {tagList(item.scene_l2)}
+          {tagList(item.scene_l2, item.matched_tags.scene_l2)}
         </div>
         <div className="tag-group" aria-label="属性标签">
           <span className="tag-label">属性</span>
-          {tagList(item.attributes)}
+          {tagList(item.attributes, item.matched_tags.attributes)}
         </div>
 
         <div className="reason-box">

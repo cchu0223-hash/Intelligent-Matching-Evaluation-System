@@ -410,6 +410,22 @@ def voice_attributes(voice: VoiceRecord, rules: dict[str, Any]) -> list[str]:
     return attrs
 
 
+def build_matched_tags(item: dict[str, Any], hit_info: dict[str, Any]) -> dict[str, Any]:
+    rule_reason = item.get("rule_reason", {})
+    scene_l1 = [tag for tag in item.get("scene_l1", []) if tag in set(rule_reason.get("matched_l1", []))]
+    scene_l2 = [tag for tag in item.get("scene_l2", []) if tag in set(rule_reason.get("matched_l2", []))]
+    matched_attributes: list[str] = []
+    if float(rule_reason.get("attr_score", 0.0) or 0.0) > 0:
+        matched_attributes = list(item.get("attributes", []))
+    language = bool(hit_info.get("lang_hits")) and item.get("language") in set(hit_info.get("lang_hits", []))
+    return {
+        "scene_l1": scene_l1,
+        "scene_l2": scene_l2,
+        "attributes": matched_attributes,
+        "language": language,
+    }
+
+
 def speaker_dedupe_key(speaker_name: str, rules: dict[str, Any]) -> str:
     value = normalize_text(speaker_name)
     for pattern in rules.get("speaker_dedupe_suffix_patterns", []):
@@ -568,6 +584,7 @@ class VoiceRecommender:
                 scene_l1=item["scene_l1"],
                 scene_l2=item["scene_l2"],
                 attributes=item["attributes"],
+                matched_tags=build_matched_tags(item, rule_pack["hit_info"]),
                 tech_desc=item["tech_desc"],
                 audio_url=self.audio_url_map.get(item["vcn"]),
                 score=round(float(item["final_score"]), 6),
@@ -646,6 +663,7 @@ def recommendation_to_dict(item: Recommendation) -> dict[str, Any]:
         "scene_l1": item.scene_l1,
         "scene_l2": item.scene_l2,
         "attributes": item.attributes,
+        "matched_tags": item.matched_tags,
         "tech_desc": item.tech_desc,
         "audio_url": item.audio_url,
         "score": item.score,
