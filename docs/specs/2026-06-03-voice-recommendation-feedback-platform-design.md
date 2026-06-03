@@ -81,6 +81,11 @@ backend/
 - SQLite 足够支撑内部评测和数据导出。
 - React + Vite 适合快速做评测型交互页面。
 
+前端视觉规范：
+- 参考 `docs/specs/2026-06-03-frontend-visual-guidelines.md`。
+- 参考 `design-system/intelligent-matching-evaluation-system/MASTER.md`。
+- 使用舒缓 pastel 与轻拟物风格，但页面必须是评测工具，不做营销落地页。
+
 ## 5. 后端设计
 
 后端职责：
