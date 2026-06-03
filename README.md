@@ -47,6 +47,7 @@ Set these in `backend/.env` or your deployment environment:
 - `VOICE_LIBRARY_XLSX`: default `../音库（已标注）.xlsx`.
 - `VOICE_TAXONOMY_XLSX`: default `../音色标签体系.xlsx`.
 - `VOICE_KEYWORDS_XLSX`: default `../音色场景关键词库.xlsx`.
+- `VOICE_AUDIO_CSV`: default `../content_speaker_202606031548.csv`. This CSV is read as `gb18030` and maps `vcn` to sample `audio_url`.
 - `DATABASE_PATH`: default `backend/data/evaluation.db`.
 - `CORS_ORIGINS`: default `http://localhost:5173`.
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import re
 from collections import Counter
@@ -181,6 +182,42 @@ def build_augmented_keyword_rows(keyword_rows: list[KeywordRow], taxonomy: TagTa
     for l2 in sorted(taxonomy.l2_tags):
         merged.append(KeywordRow(scene_l1=taxonomy.l2_to_l1.get(l2, ""), scene_l2=l2, keywords=[l2]))
     return merged
+
+
+def audio_choice_priority(row: dict[str, str]) -> tuple[int, int, int]:
+    name = row.get("speaker_name", "")
+    text = row.get("audio_text", "")
+    preferred_words = ["默认", "中立", "自然", "品质", "旁白"]
+    emotional_words = ["撒娇", "抱歉", "悲伤", "困惑", "严肃", "高兴"]
+    preferred = 0 if any(word in name or word in text for word in preferred_words) else 1
+    emotional = 1 if any(word in name for word in emotional_words) else 0
+    try:
+        speaker_no = int(row.get("speaker_no", "999999999"))
+    except ValueError:
+        speaker_no = 999999999
+    return (preferred, emotional, speaker_no)
+
+
+def load_audio_url_map(csv_path: Path | None) -> dict[str, str]:
+    if not csv_path or not csv_path.exists():
+        return {}
+
+    rows_by_vcn: dict[str, list[dict[str, str]]] = {}
+    with csv_path.open("r", encoding="gb18030", newline="") as file:
+        reader = csv.DictReader(file)
+        for raw_row in reader:
+            row = {key: (value or "").strip() for key, value in raw_row.items()}
+            vcn = row.get("vcn", "")
+            audio_url = row.get("audio_url", "")
+            if not vcn or not audio_url:
+                continue
+            rows_by_vcn.setdefault(vcn, []).append(row)
+
+    audio_map: dict[str, str] = {}
+    for vcn, rows in rows_by_vcn.items():
+        selected = sorted(rows, key=audio_choice_priority)[0]
+        audio_map[vcn] = selected["audio_url"]
+    return audio_map
 
 
 def tech_rank(tech_desc: str) -> float:
@@ -368,6 +405,7 @@ class VoiceRecommender:
         voice_library_xlsx: Path,
         voice_taxonomy_xlsx: Path,
         voice_keywords_xlsx: Path,
+        voice_audio_csv: Path | None,
         deepseek_api_key: str,
         deepseek_api_base_url: str,
         deepseek_model: str,
@@ -377,6 +415,7 @@ class VoiceRecommender:
         self.voices = load_voice_records(voice_library_xlsx, self.taxonomy)
         keyword_rows = load_keyword_rows(voice_keywords_xlsx, self.taxonomy)
         self.keyword_rows = build_augmented_keyword_rows(keyword_rows, self.taxonomy)
+        self.audio_url_map = load_audio_url_map(voice_audio_csv)
         self.deepseek_api_key = deepseek_api_key
         self.deepseek_api_base_url = deepseek_api_base_url
         self.deepseek_model = deepseek_model
@@ -502,7 +541,7 @@ class VoiceRecommender:
                 scene_l2=item["scene_l2"],
                 attributes=item["attributes"],
                 tech_desc=item["tech_desc"],
-                audio_url=None,
+                audio_url=self.audio_url_map.get(item["vcn"]),
                 score=round(float(item["final_score"]), 6),
                 reason=item["llm_reason"],
                 debug={

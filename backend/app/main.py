@@ -22,6 +22,7 @@ recommender = VoiceRecommender(
     voice_library_xlsx=settings.voice_library_xlsx,
     voice_taxonomy_xlsx=settings.voice_taxonomy_xlsx,
     voice_keywords_xlsx=settings.voice_keywords_xlsx,
+    voice_audio_csv=settings.voice_audio_csv,
     deepseek_api_key=settings.deepseek_api_key,
     deepseek_api_base_url=settings.deepseek_api_base_url,
     deepseek_model=settings.deepseek_model,

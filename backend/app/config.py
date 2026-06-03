@@ -33,6 +33,7 @@ class Settings:
     voice_library_xlsx: Path
     voice_taxonomy_xlsx: Path
     voice_keywords_xlsx: Path
+    voice_audio_csv: Path | None
     database_path: Path
     deepseek_api_key: str
     deepseek_api_base_url: str
@@ -62,6 +63,9 @@ def get_settings() -> Settings:
         ),
         voice_keywords_xlsx=_resolve_path(
             os.getenv("VOICE_KEYWORDS_XLSX"), workspace / "音色场景关键词库.xlsx"
+        ),
+        voice_audio_csv=_resolve_path(
+            os.getenv("VOICE_AUDIO_CSV"), workspace / "content_speaker_202606031548.csv"
         ),
         database_path=_resolve_path(os.getenv("DATABASE_PATH"), repo / "backend/data/evaluation.db"),
         deepseek_api_key=os.getenv("DEEPSEEK_API_KEY", "").strip(),
