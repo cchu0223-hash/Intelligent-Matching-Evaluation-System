@@ -279,6 +279,10 @@ h3 {
   box-shadow: 10px 10px 24px rgba(160, 149, 134, 0.25), -10px -10px 24px rgba(255, 255, 255, 0.78);
 }
 
+.recommendations {
+  padding: 28px;
+}
+
 .module-heading,
 .voice-title-row,
 .action-row {
@@ -399,7 +403,7 @@ h3 {
 }
 
 .debug-panel {
-  padding: 20px;
+  padding: 28px;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.48);
@@ -712,6 +716,7 @@ h3 {
   .hero-band,
   .composer,
   .debug-panel,
+  .recommendations,
   .voice-card {
     padding: 18px;
   }
