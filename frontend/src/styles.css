@@ -202,7 +202,7 @@ textarea:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 24px;
   align-items: end;
-  padding: 36px;
+  padding: 28px;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.46);
@@ -227,8 +227,8 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(2rem, 4vw, 4.25rem);
-  line-height: 1.05;
+  font-size: clamp(1.85rem, 2.6vw, 2.45rem);
+  line-height: 1.18;
 }
 
 h2 {
@@ -241,10 +241,10 @@ h3 {
 
 .hero-copy {
   max-width: 760px;
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: var(--muted);
-  font-size: 1.03rem;
-  line-height: 1.75;
+  font-size: 0.96rem;
+  line-height: 1.68;
 }
 
 .status-strip {
