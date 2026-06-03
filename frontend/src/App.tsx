@@ -264,14 +264,6 @@ export default function App() {
             <strong>智能评测系统</strong>
           </div>
         </div>
-        <button
-          className="collapse-button"
-          type="button"
-          aria-expanded={!isSidebarCollapsed}
-          onClick={() => setIsSidebarCollapsed((current) => !current)}
-        >
-          {isSidebarCollapsed ? '展开' : '收起'}
-        </button>
         <nav className="nav-list">
           {NAV_ITEMS.map((item) => {
             const isAvailable = item.status === 'available';
@@ -290,6 +282,15 @@ export default function App() {
             );
           })}
         </nav>
+        <button
+          className="collapse-button"
+          type="button"
+          aria-label={isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+          aria-expanded={!isSidebarCollapsed}
+          onClick={() => setIsSidebarCollapsed((current) => !current)}
+        >
+          <span aria-hidden="true">{isSidebarCollapsed ? '›' : '‹'}</span>
+        </button>
       </aside>
 
       <main className="app-shell">
