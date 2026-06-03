@@ -51,6 +51,7 @@ class Settings:
 def get_settings() -> Settings:
     repo = _repo_root()
     load_dotenv(repo / ".env")
+    load_dotenv(repo / "backend/.env", override=True)
     origins = [
         item.strip()
         for item in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
