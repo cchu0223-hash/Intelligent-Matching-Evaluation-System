@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class RecommendRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=15000)
     task_type: str = Field(default="voice")
-    top_k: int | None = Field(default=None, ge=1, le=10)
+    top_k: Optional[int] = Field(default=None, ge=1, le=10)
     use_deepseek: bool = True
 
 
@@ -22,9 +22,9 @@ class RecommendationItem(BaseModel):
     scene_l2: list[str]
     attributes: list[str]
     tech_desc: str
-    audio_url: str | None
-    score: float | None
-    reason: str | None
+    audio_url: Optional[str]
+    score: Optional[float]
+    reason: Optional[str]
     debug: dict[str, Any]
 
 
@@ -35,7 +35,7 @@ class RecommendResponse(BaseModel):
     stage: str
     debug_tags: dict[str, Any]
     recommendations: list[RecommendationItem]
-    llm_error: str | None = None
+    llm_error: Optional[str] = None
 
 
 class FeedbackRequest(BaseModel):
@@ -44,7 +44,7 @@ class FeedbackRequest(BaseModel):
     speaker_name: str
     rank: int = Field(..., ge=1)
     rating: int = Field(..., ge=1, le=5)
-    suggestion: str | None = Field(default=None, max_length=2000)
+    suggestion: Optional[str] = Field(default=None, max_length=2000)
 
 
 class FeedbackResponse(BaseModel):

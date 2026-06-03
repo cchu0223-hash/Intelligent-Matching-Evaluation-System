@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -48,6 +50,7 @@ class Settings:
 
 def get_settings() -> Settings:
     repo = _repo_root()
+    load_dotenv(repo / ".env")
     origins = [
         item.strip()
         for item in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
