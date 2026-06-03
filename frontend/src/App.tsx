@@ -233,7 +233,6 @@ export default function App() {
   const [feedback, setFeedback] = useState<Record<string, FeedbackState>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const remaining = MAX_TEXT_LENGTH - text.length;
   const canRecommend = text.trim().length > 0 && remaining >= 0 && !isLoading;
@@ -255,7 +254,7 @@ export default function App() {
   }
 
   return (
-    <div className={isSidebarCollapsed ? 'app-frame sidebar-collapsed' : 'app-frame'}>
+    <div className="app-frame">
       <aside className="sidebar" aria-label="评测模块导航">
         <div className="brand-block">
           <div className="brand-mark" aria-hidden="true">讯</div>
@@ -282,15 +281,6 @@ export default function App() {
             );
           })}
         </nav>
-        <button
-          className="collapse-button"
-          type="button"
-          aria-label={isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
-          aria-expanded={!isSidebarCollapsed}
-          onClick={() => setIsSidebarCollapsed((current) => !current)}
-        >
-          <span aria-hidden="true">{isSidebarCollapsed ? '›' : '‹'}</span>
-        </button>
       </aside>
 
       <main className="app-shell">
