@@ -263,6 +263,11 @@ export default function App() {
     }
   }
 
+  function handleClearText() {
+    setText('');
+    setError(null);
+  }
+
   return (
     <div className="app-frame">
       <aside className="sidebar" aria-label="评测模块导航">
@@ -315,7 +320,12 @@ export default function App() {
               <p className="eyebrow">Input</p>
               <h2>配音文本</h2>
             </div>
-            <span className={remaining < 0 ? 'counter danger' : 'counter'}>{text.length} / {MAX_TEXT_LENGTH}</span>
+            <div className="composer-tools">
+              <button className="ghost-button" disabled={!text.length || isLoading} type="button" onClick={handleClearText}>
+                清空
+              </button>
+              <span className={remaining < 0 ? 'counter danger' : 'counter'}>{text.length} / {MAX_TEXT_LENGTH}</span>
+            </div>
           </div>
           <textarea
             className="script-input"

@@ -317,6 +317,12 @@ h3 {
   color: #91a29e;
 }
 
+.composer-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .action-row {
   margin-top: 18px;
 }
@@ -328,7 +334,8 @@ h3 {
 }
 
 .primary-button,
-.secondary-button {
+.secondary-button,
+.ghost-button {
   min-height: 44px;
   border: 0;
   border-radius: 8px;
@@ -352,14 +359,25 @@ h3 {
   border: 1px solid var(--line);
 }
 
+.ghost-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(79, 143, 131, 0.18);
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .primary-button:hover:not(:disabled),
 .secondary-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled),
 .rating-button:hover {
   transform: translateY(-1px);
 }
 
 .primary-button:disabled,
-.secondary-button:disabled {
+.secondary-button:disabled,
+.ghost-button:disabled {
   opacity: 0.55;
 }
 
