@@ -58,8 +58,10 @@ function DebugPanel({ response }: { response: RecommendResponse }) {
   return (
     <section className="debug-panel" aria-label="匹配调试信息">
       <div className="module-heading">
-        <p className="eyebrow">Debug Signals</p>
-        <h2>文本识别到的匹配信号</h2>
+        <div>
+          <p className="eyebrow">Debug Signals</p>
+          <h2>文本识别到的匹配信号</h2>
+        </div>
       </div>
       <div className="debug-grid">
         <div>
@@ -347,8 +349,10 @@ export default function App() {
         {response && sortedRecommendations.length ? (
           <section className="recommendations" aria-label="推荐音色">
             <div className="module-heading">
-              <p className="eyebrow">Recommendations</p>
-              <h2>去重后 Top5 音色</h2>
+              <div>
+                <p className="eyebrow">Recommendations</p>
+                <h2>去重后 Top5 音色</h2>
+              </div>
             </div>
             <div className="voice-list">
               {sortedRecommendations.map((item) => (
