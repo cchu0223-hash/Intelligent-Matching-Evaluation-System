@@ -602,6 +602,29 @@ h3 {
   font-size: 0.82rem;
 }
 
+.feedback-success {
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid rgba(79, 143, 131, 0.2);
+  border-radius: 12px;
+  background: rgba(234, 245, 241, 0.64);
+  color: var(--primary-strong);
+}
+
+.feedback-success span {
+  font-size: 0.96rem;
+  font-weight: 850;
+}
+
+.feedback-success p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
 @media (max-width: 900px) {
   .app-frame {
     grid-template-columns: 1fr;

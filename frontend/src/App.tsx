@@ -16,6 +16,7 @@ const NAV_ITEMS = [
 type FeedbackState = {
   rating?: number;
   suggestion: string;
+  submitted?: boolean;
   status?: string;
 };
 
@@ -142,9 +143,9 @@ function RecommendationCard({
     };
     try {
       await submitFeedback(payload);
-      onStateChange({ ...state, status: '已保存' });
+      onStateChange({ ...state, submitted: true, status: '感谢反馈，已记录你的评价。' });
     } catch (error) {
-      onStateChange({ ...state, status: error instanceof Error ? error.message : '提交失败' });
+      onStateChange({ ...state, submitted: false, status: error instanceof Error ? error.message : '提交失败' });
     } finally {
       setIsSubmitting(false);
     }
@@ -198,30 +199,39 @@ function RecommendationCard({
       </div>
 
       <div className="feedback-box">
-        <label>这个音色适合当前文本吗？</label>
-        <div className="rating-row" role="group" aria-label={`${item.speaker_name} 评分`}>
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button
-              className={state.rating === rating ? 'rating-button active' : 'rating-button'}
-              key={rating}
-              type="button"
-              onClick={() => onStateChange({ ...state, rating, status: undefined })}
-            >
-              {rating}
+        {state.submitted ? (
+          <div className="feedback-success" role="status">
+            <span>感谢反馈</span>
+            <p>已记录你的评价。</p>
+          </div>
+        ) : (
+          <>
+            <label>这个音色适合当前文本吗？</label>
+            <div className="rating-row" role="group" aria-label={`${item.speaker_name} 评分`}>
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button
+                  className={state.rating === rating ? 'rating-button active' : 'rating-button'}
+                  key={rating}
+                  type="button"
+                  onClick={() => onStateChange({ ...state, rating, submitted: false, status: undefined })}
+                >
+                  {rating}
+                </button>
+              ))}
+            </div>
+            <textarea
+              aria-label={`${item.speaker_name} 文字建议`}
+              maxLength={2000}
+              placeholder="可选：为什么适合或不适合？"
+              value={state.suggestion}
+              onChange={(event) => onStateChange({ ...state, suggestion: event.target.value, submitted: false, status: undefined })}
+            />
+            <button className="secondary-button" disabled={!canSubmit} type="button" onClick={handleSubmit}>
+              {isSubmitting ? '提交中' : '提交反馈'}
             </button>
-          ))}
-        </div>
-        <textarea
-          aria-label={`${item.speaker_name} 文字建议`}
-          maxLength={2000}
-          placeholder="可选：为什么适合或不适合？"
-          value={state.suggestion}
-          onChange={(event) => onStateChange({ ...state, suggestion: event.target.value, status: undefined })}
-        />
-        <button className="secondary-button" disabled={!canSubmit} type="button" onClick={handleSubmit}>
-          {isSubmitting ? '提交中' : '提交反馈'}
-        </button>
-        {state.status ? <p className="feedback-status">{state.status}</p> : null}
+            {state.status ? <p className="feedback-status">{state.status}</p> : null}
+          </>
+        )}
       </div>
     </article>
   );
