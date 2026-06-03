@@ -3,6 +3,15 @@ import { recommendVoice, submitFeedback } from './api';
 import type { FeedbackPayload, Recommendation, RecommendResponse } from './types';
 
 const MAX_TEXT_LENGTH = 15000;
+const NAV_ITEMS = [
+  { label: '音色匹配', status: 'available' },
+  { label: '数字人形象匹配', status: 'coming' },
+  { label: '模板匹配', status: 'coming' },
+  { label: '背景匹配', status: 'coming' },
+  { label: '前景匹配', status: 'coming' },
+  { label: '音效匹配', status: 'coming' },
+  { label: '音乐匹配', status: 'coming' },
+] as const;
 
 type FeedbackState = {
   rating?: number;
@@ -224,6 +233,7 @@ export default function App() {
   const [feedback, setFeedback] = useState<Record<string, FeedbackState>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const remaining = MAX_TEXT_LENGTH - text.length;
   const canRecommend = text.trim().length > 0 && remaining >= 0 && !isLoading;
@@ -245,66 +255,104 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero-band">
-        <div>
-          <p className="eyebrow">Voice Matching Lab</p>
-          <h1>音色智能匹配评测台</h1>
-          <p className="hero-copy">
-            输入真实配音文本，系统返回去重后的 Top5 音色，并收集每个推荐的评分与建议。当前版本聚焦“文本到音色标签匹配”，保留扩展到形象匹配的数据结构。
-          </p>
+    <div className={isSidebarCollapsed ? 'app-frame sidebar-collapsed' : 'app-frame'}>
+      <aside className="sidebar" aria-label="评测模块导航">
+        <div className="brand-block">
+          <div className="brand-mark" aria-hidden="true">讯</div>
+          <div className="brand-copy">
+            <span>讯飞智作</span>
+            <strong>智能评测系统</strong>
+          </div>
         </div>
-        <div className="status-strip" aria-label="系统能力">
-          <span>Top5 推荐</span>
-          <span>15000 字上限</span>
-          <span>规则召回 + DeepSeek 重排</span>
-        </div>
-      </section>
+        <button
+          className="collapse-button"
+          type="button"
+          aria-expanded={!isSidebarCollapsed}
+          onClick={() => setIsSidebarCollapsed((current) => !current)}
+        >
+          {isSidebarCollapsed ? '展开' : '收起'}
+        </button>
+        <nav className="nav-list">
+          {NAV_ITEMS.map((item) => {
+            const isAvailable = item.status === 'available';
+            return (
+              <button
+                className={isAvailable ? 'nav-item active' : 'nav-item disabled'}
+                disabled={!isAvailable}
+                key={item.label}
+                type="button"
+                aria-current={isAvailable ? 'page' : undefined}
+              >
+                <span className="nav-dot" aria-hidden="true" />
+                <span className="nav-label">{item.label}</span>
+                <span className="nav-status">{isAvailable ? '当前' : '待开放'}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
 
-      <section className="composer">
-        <div className="composer-header">
+      <main className="app-shell">
+        <section className="hero-band">
           <div>
-            <p className="eyebrow">Input</p>
-            <h2>配音文本</h2>
+            <p className="eyebrow">Voice Matching Lab</p>
+            <h1>音色智能匹配评测台</h1>
+            <p className="hero-copy">
+              输入真实配音文本，系统返回去重后的 Top5 音色，并收集每个推荐的评分与建议。当前版本聚焦“文本到音色标签匹配”，保留扩展到更多智能评测任务的数据结构。
+            </p>
           </div>
-          <span className={remaining < 0 ? 'counter danger' : 'counter'}>{text.length} / {MAX_TEXT_LENGTH}</span>
-        </div>
-        <textarea
-          className="script-input"
-          placeholder="粘贴一段真实配音文本，用于评测系统推荐出的音色是否合适。"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-        />
-        <div className="action-row">
-          <button className="primary-button" disabled={!canRecommend} type="button" onClick={handleRecommend}>
-            {isLoading ? '匹配中' : '智能匹配'}
-          </button>
-          <p>{remaining < 0 ? `已超出 ${Math.abs(remaining)} 字` : '模型分析会使用截断文本，但完整输入会进入评测记录。'}</p>
-        </div>
-        {error ? <p className="error-text">{error}</p> : null}
-      </section>
-
-      {response ? <DebugPanel response={response} /> : null}
-
-      {response && sortedRecommendations.length ? (
-        <section className="recommendations" aria-label="推荐音色">
-          <div className="section-heading">
-            <p className="eyebrow">Recommendations</p>
-            <h2>去重后 Top5 音色</h2>
-          </div>
-          <div className="voice-list">
-            {sortedRecommendations.map((item) => (
-              <RecommendationCard
-                item={item}
-                key={`${response.request_id}-${item.vcn}-${item.rank}`}
-                requestId={response.request_id}
-                state={feedback[item.vcn] || { suggestion: '' }}
-                onStateChange={(next) => setFeedback((current) => ({ ...current, [item.vcn]: next }))}
-              />
-            ))}
+          <div className="status-strip" aria-label="系统能力">
+            <span>Top5 推荐</span>
+            <span>15000 字上限</span>
+            <span>规则召回 + DeepSeek 重排</span>
           </div>
         </section>
-      ) : null}
-    </main>
+
+        <section className="composer">
+          <div className="composer-header">
+            <div>
+              <p className="eyebrow">Input</p>
+              <h2>配音文本</h2>
+            </div>
+            <span className={remaining < 0 ? 'counter danger' : 'counter'}>{text.length} / {MAX_TEXT_LENGTH}</span>
+          </div>
+          <textarea
+            className="script-input"
+            placeholder="粘贴一段真实配音文本，用于评测系统推荐出的音色是否合适。"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+          <div className="action-row">
+            <button className="primary-button" disabled={!canRecommend} type="button" onClick={handleRecommend}>
+              {isLoading ? '匹配中' : '智能匹配'}
+            </button>
+            <p>{remaining < 0 ? `已超出 ${Math.abs(remaining)} 字` : '模型分析会使用截断文本，但完整输入会进入评测记录。'}</p>
+          </div>
+          {error ? <p className="error-text">{error}</p> : null}
+        </section>
+
+        {response ? <DebugPanel response={response} /> : null}
+
+        {response && sortedRecommendations.length ? (
+          <section className="recommendations" aria-label="推荐音色">
+            <div className="section-heading">
+              <p className="eyebrow">Recommendations</p>
+              <h2>去重后 Top5 音色</h2>
+            </div>
+            <div className="voice-list">
+              {sortedRecommendations.map((item) => (
+                <RecommendationCard
+                  item={item}
+                  key={`${response.request_id}-${item.vcn}-${item.rank}`}
+                  requestId={response.request_id}
+                  state={feedback[item.vcn] || { suggestion: '' }}
+                  onStateChange={(next) => setFeedback((current) => ({ ...current, [item.vcn]: next }))}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </main>
+    </div>
   );
 }
