@@ -299,6 +299,10 @@ export default function App() {
             );
           })}
         </nav>
+        <div className="sidebar-footer">
+          <span>Internal Eval</span>
+          <strong>v0.1 · Voice Matching</strong>
+        </div>
       </aside>
 
       <main className="app-shell">
