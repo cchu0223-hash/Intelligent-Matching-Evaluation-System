@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { recommendVoice, submitFeedback } from './api';
-import type { FeedbackPayload, Recommendation, RecommendResponse } from './types';
+import { recommendVoice, submitFeedback, submitSceneFeedback } from './api';
+import type { FeedbackPayload, Recommendation, RecommendResponse, SceneFeedbackPayload } from './types';
 
 const MAX_TEXT_LENGTH = 15000;
 const NAV_ITEMS = [
@@ -15,6 +15,15 @@ const NAV_ITEMS = [
 
 type FeedbackState = {
   rating?: number;
+  suggestion: string;
+  submitted?: boolean;
+  status?: string;
+};
+
+type SceneFeedbackState = {
+  suggested_scene_l1: string;
+  suggested_scene_l2: string;
+  suggested_keywords: string;
   suggestion: string;
   submitted?: boolean;
   status?: string;
@@ -47,6 +56,99 @@ function tagList(tags: string[], matchedTags: string[] = [], empty = '未标注'
       {tag}
     </span>
   ));
+}
+
+function SceneFeedbackForm({ requestId }: { requestId: string }) {
+  const [state, setState] = useState<SceneFeedbackState>({
+    suggested_scene_l1: '',
+    suggested_scene_l2: '',
+    suggested_keywords: '',
+    suggestion: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const canSubmit = Boolean(state.suggested_keywords.trim()) && !isSubmitting;
+
+  async function handleSubmit() {
+    if (!state.suggested_keywords.trim()) {
+      return;
+    }
+    setIsSubmitting(true);
+    const payload: SceneFeedbackPayload = {
+      request_id: requestId,
+      suggested_scene_l1: state.suggested_scene_l1.trim() || undefined,
+      suggested_scene_l2: state.suggested_scene_l2.trim() || undefined,
+      suggested_keywords: state.suggested_keywords.trim(),
+      suggestion: state.suggestion.trim() || undefined,
+    };
+    try {
+      await submitSceneFeedback(payload);
+      setState((current) => ({ ...current, submitted: true, status: '感谢反馈，已记录你的场景修正建议。' }));
+    } catch (error) {
+      setState((current) => ({ ...current, submitted: false, status: error instanceof Error ? error.message : '提交失败' }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (state.submitted) {
+    return (
+      <div className="scene-feedback scene-feedback-success" role="status">
+        <span>感谢反馈</span>
+        <p>已记录你的场景修正建议，后续可用于补充关键词库。</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="scene-feedback">
+      <div>
+        <h3>场景识别不准确？</h3>
+        <p>请选择你认为更合适的场景，并填写原文中应该命中的关键词，便于后续补充关键词库。</p>
+      </div>
+      <div className="scene-feedback-grid">
+        <label>
+          <span>建议一级场景</span>
+          <input
+            maxLength={80}
+            placeholder="例如：角色演绎"
+            value={state.suggested_scene_l1}
+            onChange={(event) => setState((current) => ({ ...current, suggested_scene_l1: event.target.value, status: undefined }))}
+          />
+        </label>
+        <label>
+          <span>建议二级场景</span>
+          <input
+            maxLength={80}
+            placeholder="例如：有声小说"
+            value={state.suggested_scene_l2}
+            onChange={(event) => setState((current) => ({ ...current, suggested_scene_l2: event.target.value, status: undefined }))}
+          />
+        </label>
+      </div>
+      <label>
+        <span>应命中的关键词</span>
+        <textarea
+          maxLength={1000}
+          placeholder="例如：小白兔、小乌龟、赛跑、故事告诉我们"
+          value={state.suggested_keywords}
+          onChange={(event) => setState((current) => ({ ...current, suggested_keywords: event.target.value, status: undefined }))}
+        />
+      </label>
+      <label>
+        <span>补充说明（可选）</span>
+        <textarea
+          maxLength={2000}
+          placeholder="例如：这是一段儿童故事，不应该只识别成励志演讲。"
+          value={state.suggestion}
+          onChange={(event) => setState((current) => ({ ...current, suggestion: event.target.value, status: undefined }))}
+        />
+      </label>
+      <button className="secondary-button" disabled={!canSubmit} type="button" onClick={handleSubmit}>
+        {isSubmitting ? '提交中' : '提交场景反馈'}
+      </button>
+      {state.status ? <p className="feedback-status">{state.status}</p> : null}
+    </div>
+  );
 }
 
 function DebugPanel({ response }: { response: RecommendResponse }) {
@@ -113,6 +215,7 @@ function DebugPanel({ response }: { response: RecommendResponse }) {
         )}
       </div>
       {response.llm_error ? <p className="error-text">DeepSeek 重排失败，已回退规则排序：{response.llm_error}</p> : null}
+      <SceneFeedbackForm requestId={response.request_id} />
     </section>
   );
 }

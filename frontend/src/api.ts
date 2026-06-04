@@ -1,4 +1,4 @@
-import type { FeedbackPayload, RecommendResponse } from './types';
+import type { FeedbackPayload, RecommendResponse, SceneFeedbackPayload } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -26,6 +26,13 @@ export function recommendVoice(text: string): Promise<RecommendResponse> {
 
 export function submitFeedback(payload: FeedbackPayload): Promise<{ feedback_id: string; status: string }> {
   return request('/api/feedback', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitSceneFeedback(payload: SceneFeedbackPayload): Promise<{ feedback_id: string; status: string }> {
+  return request('/api/scene-feedback', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

@@ -68,6 +68,17 @@ class Database:
                     FOREIGN KEY(request_id) REFERENCES recommendation_requests(id)
                 );
 
+                CREATE TABLE IF NOT EXISTS scene_feedback (
+                    id TEXT PRIMARY KEY,
+                    request_id TEXT NOT NULL,
+                    suggested_scene_l1 TEXT,
+                    suggested_scene_l2 TEXT,
+                    suggested_keywords TEXT NOT NULL,
+                    suggestion TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(request_id) REFERENCES recommendation_requests(id)
+                );
+
                 CREATE TABLE IF NOT EXISTS asset_url_overrides (
                     id TEXT PRIMARY KEY,
                     asset_type TEXT NOT NULL DEFAULT 'voice',
@@ -165,6 +176,37 @@ class Database:
                     speaker_name,
                     rank,
                     rating,
+                    suggestion,
+                    utc_now(),
+                ),
+            )
+            self._connection.commit()
+        return feedback_id
+
+    def create_scene_feedback(
+        self,
+        *,
+        request_id: str,
+        suggested_scene_l1: str | None,
+        suggested_scene_l2: str | None,
+        suggested_keywords: str,
+        suggestion: str | None,
+    ) -> str:
+        feedback_id = str(uuid.uuid4())
+        with self._lock:
+            self._connection.execute(
+                """
+                INSERT INTO scene_feedback
+                (id, request_id, suggested_scene_l1, suggested_scene_l2,
+                 suggested_keywords, suggestion, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    feedback_id,
+                    request_id,
+                    suggested_scene_l1,
+                    suggested_scene_l2,
+                    suggested_keywords,
                     suggestion,
                     utc_now(),
                 ),

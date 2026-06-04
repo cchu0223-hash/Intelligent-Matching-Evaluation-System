@@ -13,6 +13,8 @@ from app.schemas import (
     HealthResponse,
     RecommendRequest,
     RecommendResponse,
+    SceneFeedbackRequest,
+    SceneFeedbackResponse,
 )
 from app.storage.database import Database
 
@@ -99,3 +101,15 @@ def feedback(payload: FeedbackRequest) -> FeedbackResponse:
         suggestion=payload.suggestion.strip() if payload.suggestion else None,
     )
     return FeedbackResponse(feedback_id=feedback_id, status="saved")
+
+
+@app.post("/api/scene-feedback", response_model=SceneFeedbackResponse)
+def scene_feedback(payload: SceneFeedbackRequest) -> SceneFeedbackResponse:
+    feedback_id = database.create_scene_feedback(
+        request_id=payload.request_id,
+        suggested_scene_l1=payload.suggested_scene_l1.strip() if payload.suggested_scene_l1 else None,
+        suggested_scene_l2=payload.suggested_scene_l2.strip() if payload.suggested_scene_l2 else None,
+        suggested_keywords=payload.suggested_keywords.strip(),
+        suggestion=payload.suggestion.strip() if payload.suggestion else None,
+    )
+    return SceneFeedbackResponse(feedback_id=feedback_id, status="saved")

@@ -53,6 +53,19 @@ class FeedbackResponse(BaseModel):
     status: str
 
 
+class SceneFeedbackRequest(BaseModel):
+    request_id: str
+    suggested_scene_l1: Optional[str] = Field(default=None, max_length=80)
+    suggested_scene_l2: Optional[str] = Field(default=None, max_length=80)
+    suggested_keywords: str = Field(..., min_length=1, max_length=1000)
+    suggestion: Optional[str] = Field(default=None, max_length=2000)
+
+
+class SceneFeedbackResponse(BaseModel):
+    feedback_id: str
+    status: str
+
+
 class HealthResponse(BaseModel):
     status: str
     voice_count: int
