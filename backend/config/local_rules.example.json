@@ -35,6 +35,13 @@
       "weight": 1.0
     }
   ],
+  "scene_keyword_overrides": [
+    {
+      "scene_l1": "一级标签名称",
+      "scene_l2": "二级标签名称",
+      "keywords": ["关键词1", "关键词2"]
+    }
+  ],
   "audio_preferred_words": [],
   "audio_deprioritized_words": [],
   "speaker_dedupe_suffix_patterns": [],

@@ -22,6 +22,7 @@ DEFAULT_RULES: dict[str, Any] = {
     "marketing_focus": {"l1_tags": [], "l2_tags": [], "short_video_tags": []},
     "marketing_backfill": [],
     "formal_backfill": [],
+    "scene_keyword_overrides": [],
     "audio_preferred_words": [],
     "audio_deprioritized_words": [],
     "speaker_dedupe_suffix_patterns": [],
@@ -51,6 +52,11 @@ def load_rule_settings(path: Path | None) -> dict[str, Any]:
 def split_tags(value: Any) -> list[str]:
     if value is None:
         return []
+    if isinstance(value, list):
+        tags: list[str] = []
+        for item in value:
+            tags.extend(split_tags(item))
+        return tags
     parts = re.split(r"[,，、/|]+", str(value).strip())
     return [part.strip() for part in parts if part and part.strip()]
 
@@ -177,6 +183,21 @@ def build_augmented_keyword_rows(keyword_rows: list[KeywordRow], taxonomy: TagTa
     for l2 in sorted(taxonomy.l2_tags):
         merged.append(KeywordRow(scene_l1=taxonomy.l2_to_l1.get(l2, ""), scene_l2=l2, keywords=[l2]))
     return merged
+
+
+def load_scene_keyword_overrides(rules: dict[str, Any], taxonomy: TagTaxonomy) -> list[KeywordRow]:
+    rows: list[KeywordRow] = []
+    for item in rules.get("scene_keyword_overrides", []):
+        if not isinstance(item, dict):
+            continue
+        l1 = str(item.get("scene_l1", "") or "").strip()
+        l2 = str(item.get("scene_l2", "") or "").strip()
+        keywords = split_tags(item.get("keywords", ""))
+        if not l1 or not keywords:
+            continue
+        canonical_l1 = l1 if l1 in taxonomy.l1_tags else taxonomy.l2_to_l1.get(l2, l1)
+        rows.append(KeywordRow(scene_l1=canonical_l1, scene_l2=l2, keywords=keywords))
+    return rows
 
 
 def audio_choice_priority(row: dict[str, str], rules: dict[str, Any]) -> tuple[int, int, int]:
@@ -451,7 +472,10 @@ class VoiceRecommender:
         self.taxonomy = load_tag_taxonomy(voice_taxonomy_xlsx)
         self.voices = load_voice_records(voice_library_xlsx, self.taxonomy)
         keyword_rows = load_keyword_rows(voice_keywords_xlsx, self.taxonomy)
-        self.keyword_rows = build_augmented_keyword_rows(keyword_rows, self.taxonomy)
+        self.keyword_rows = build_augmented_keyword_rows(
+            keyword_rows + load_scene_keyword_overrides(self.rules, self.taxonomy),
+            self.taxonomy,
+        )
         self.audio_url_map = load_audio_url_map(voice_audio_csv, self.rules)
         self.deepseek_api_key = deepseek_api_key
         self.deepseek_api_base_url = deepseek_api_base_url
@@ -503,8 +527,13 @@ class VoiceRecommender:
             stage = "attr_lang"
             filtered = [item for item in scored if item[2]["attr_score"] > 0 or item[2]["lang_score"] > 0 or item[2]["l1_score"] > 0 or item[2]["l2_score"] > 0]
         if len(filtered) < candidate_size:
-            stage = "global_fallback"
-            filtered = scored
+            if filtered:
+                stage = f"{stage}_with_global_backfill"
+                present = {item[0].vcn for item in filtered}
+                filtered = filtered + [item for item in scored if item[0].vcn not in present]
+            else:
+                stage = "global_fallback"
+                filtered = scored
 
         candidates = []
         for index, (voice, score, reason) in enumerate(filtered[:candidate_size]):
