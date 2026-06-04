@@ -344,7 +344,13 @@ export default function App() {
             <button className="primary-button" disabled={!canRecommend} type="button" onClick={handleRecommend}>
               {isLoading ? '匹配中' : '智能匹配'}
             </button>
-            <p>{remaining < 0 ? `已超出 ${Math.abs(remaining)} 字` : '模型分析会使用截断文本，但完整输入会进入评测记录。'}</p>
+            <p>
+              {isLoading
+                ? '正在分析文本并调用模型重排，通常需要 3-10 秒。'
+                : remaining < 0
+                  ? `已超出 ${Math.abs(remaining)} 字`
+                  : '模型分析会使用截断文本，但完整输入会进入评测记录。'}
+            </p>
           </div>
           {error ? <p className="error-text">{error}</p> : null}
         </section>
