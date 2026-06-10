@@ -55,8 +55,8 @@ class FeedbackResponse(BaseModel):
 
 class SceneFeedbackRequest(BaseModel):
     request_id: str
-    suggested_scene_l1: Optional[str] = Field(default=None, max_length=80)
-    suggested_scene_l2: Optional[str] = Field(default=None, max_length=80)
+    suggested_scene_l1: list[str] = Field(default_factory=list)
+    suggested_scene_l2: list[str] = Field(default_factory=list)
     suggested_keywords: str = Field(..., min_length=1, max_length=1000)
     suggestion: Optional[str] = Field(default=None, max_length=2000)
 
@@ -64,6 +64,11 @@ class SceneFeedbackRequest(BaseModel):
 class SceneFeedbackResponse(BaseModel):
     feedback_id: str
     status: str
+
+
+class TaxonomyResponse(BaseModel):
+    scene_l1: list[str]
+    scene_l2: list[str]
 
 
 class HealthResponse(BaseModel):

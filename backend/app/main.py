@@ -15,6 +15,7 @@ from app.schemas import (
     RecommendResponse,
     SceneFeedbackRequest,
     SceneFeedbackResponse,
+    TaxonomyResponse,
 )
 from app.storage.database import Database
 
@@ -49,6 +50,14 @@ def health() -> HealthResponse:
         voice_count=len(recommender.voices),
         keyword_count=len(recommender.keyword_rows),
         deepseek_enabled=bool(settings.deepseek_api_key),
+    )
+
+
+@app.get("/api/taxonomy", response_model=TaxonomyResponse)
+def taxonomy() -> TaxonomyResponse:
+    return TaxonomyResponse(
+        scene_l1=sorted(recommender.taxonomy.l1_tags),
+        scene_l2=sorted(recommender.taxonomy.l2_tags),
     )
 
 
@@ -107,8 +116,8 @@ def feedback(payload: FeedbackRequest) -> FeedbackResponse:
 def scene_feedback(payload: SceneFeedbackRequest) -> SceneFeedbackResponse:
     feedback_id = database.create_scene_feedback(
         request_id=payload.request_id,
-        suggested_scene_l1=payload.suggested_scene_l1.strip() if payload.suggested_scene_l1 else None,
-        suggested_scene_l2=payload.suggested_scene_l2.strip() if payload.suggested_scene_l2 else None,
+        suggested_scene_l1=[item.strip() for item in payload.suggested_scene_l1 if item.strip()],
+        suggested_scene_l2=[item.strip() for item in payload.suggested_scene_l2 if item.strip()],
         suggested_keywords=payload.suggested_keywords.strip(),
         suggestion=payload.suggestion.strip() if payload.suggestion else None,
     )

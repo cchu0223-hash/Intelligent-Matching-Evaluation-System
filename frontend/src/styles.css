@@ -553,6 +553,43 @@ h3 {
   background: #f8fafc;
 }
 
+.scene-feedback-collapsed {
+  padding: 0;
+  overflow: hidden;
+}
+
+.scene-feedback-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.scene-feedback-toggle span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scene-feedback-toggle strong {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scene-feedback-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .scene-feedback h3 {
   margin-bottom: 4px;
 }
@@ -575,7 +612,6 @@ h3 {
   font-weight: 600;
 }
 
-.scene-feedback input,
 .scene-feedback textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -583,11 +619,6 @@ h3 {
   background: #ffffff;
   color: var(--ink);
   font-size: 12px;
-}
-
-.scene-feedback input {
-  min-height: 36px;
-  padding: 0 10px;
 }
 
 .scene-feedback textarea {
@@ -601,6 +632,68 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.scene-option-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scene-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.scene-option-header strong {
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.scene-option-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 126px;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.scene-option {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.scene-option:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+  color: var(--primary);
+}
+
+.scene-option.selected {
+  border-color: rgba(37, 99, 235, 0.36);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+}
+
+.scene-option-empty {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .scene-feedback-success {

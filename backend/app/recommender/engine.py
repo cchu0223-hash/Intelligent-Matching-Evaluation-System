@@ -32,6 +32,27 @@ DEFAULT_RULES: dict[str, Any] = {
     "tech_rank_patterns": [],
 }
 
+LATIN_LANGUAGE_MARKERS: list[tuple[str, tuple[str, ...]]] = [
+    ("越南语", ("ă", "â", "đ", "ê", "ô", "ơ", "ư", "ạ", "ả", "ấ", "ầ", "ẩ", "ẫ", "ậ", "ắ", "ằ", "ẳ", "ẵ", "ặ", "ẹ", "ẻ", "ẽ", "ế", "ề", "ể", "ễ", "ệ", "ị", "ọ", "ỏ", "ố", "ồ", "ổ", "ỗ", "ộ", "ớ", "ờ", "ở", "ỡ", "ợ", "ụ", "ủ", "ứ", "ừ", "ử", "ữ", "ự", "ỳ", "ỵ", "ỷ", "ỹ")),
+    ("波兰语", ("ą", "ć", "ę", "ł", "ń", "ó", "ś", "ź", "ż")),
+    ("德语", ("ä", "ö", "ü", "ß")),
+    ("西班牙语", ("ñ", "¿", "¡")),
+    ("葡萄牙语", ("ã", "õ", "ç")),
+    ("法语", ("œ", "æ")),
+    ("意大利语", (" è ", " é ", " che ", " gli ", " per ", " una ")),
+    ("印尼语", (" yang ", " tidak ", " dengan ", " untuk ", " saya ")),
+    ("马来语", (" yang ", " tidak ", " dengan ", " untuk ", " saya ")),
+    ("菲律宾语", (" ang ", " mga ", " hindi ", " para ", " ako ")),
+]
+
+TECH_SUFFIX_PATTERNS = [
+    r"[-－—_]\s*超拟人\s*[（(]\s*Pro\s*[）)]\s*$",
+    r"[-－—_]\s*超拟人\s*$",
+    r"[-－—_]\s*Pro\s*$",
+    r"[-－—_]\s*品质\s*$",
+    r"[-－—_]\s*默认\s*$",
+]
+
 
 def load_rule_settings(path: Path | None) -> dict[str, Any]:
     if not path or not path.exists():
@@ -80,6 +101,37 @@ def to_gender_label(code: str) -> str:
     if str(code).strip() == "2":
         return "女"
     return "未知"
+
+
+def char_count(pattern: str, text: str) -> int:
+    return len(re.findall(pattern, text))
+
+
+def detect_script_language(text: str, available_languages: set[str]) -> str:
+    normalized = f" {normalize_text(text).lower()} "
+    if not normalized.strip():
+        return ""
+
+    checks = [
+        ("日语", r"[\u3040-\u30ff]"),
+        ("韩语", r"[\uac00-\ud7af]"),
+        ("俄语", r"[\u0400-\u04ff]"),
+        ("阿拉伯语", r"[\u0600-\u06ff]"),
+        ("泰语", r"[\u0e00-\u0e7f]"),
+    ]
+    for language, pattern in checks:
+        if language in available_languages and char_count(pattern, normalized) >= 2:
+            return language
+
+    latin_count = char_count(r"[a-zA-Z]", normalized)
+    chinese_count = char_count(r"[\u4e00-\u9fff]", normalized)
+    if latin_count < 12 or latin_count <= chinese_count * 1.5:
+        return ""
+
+    for language, markers in LATIN_LANGUAGE_MARKERS:
+        if language in available_languages and any(marker in normalized for marker in markers):
+            return language
+    return "英语" if "英语" in available_languages else ""
 
 
 def load_tag_taxonomy(xlsx_path: Path) -> TagTaxonomy:
@@ -161,7 +213,9 @@ def load_keyword_rows(xlsx_path: Path, taxonomy: TagTaxonomy) -> list[KeywordRow
     for row in rows[1:]:
         l1 = str(row[0] or "").strip()
         l2 = str(row[1] or "").strip()
-        keywords = split_tags(row[2] if len(row) > 2 else "")
+        keywords: list[str] = []
+        for cell in row[2:]:
+            keywords.extend(split_tags(cell))
         if not l1 or not keywords:
             continue
         canonical_l1 = l1 if l1 in taxonomy.l1_tags else taxonomy.l2_to_l1.get(l2, l1)
@@ -318,6 +372,28 @@ def speaker_penalty(voice: VoiceRecord, rules: dict[str, Any]) -> float:
     return penalty
 
 
+def language_match_score(voice_language: str, hit_info: dict[str, Any]) -> float:
+    detected_language = str(hit_info.get("detected_language", "") or "").strip()
+    lang_hits = set(hit_info.get("lang_hits", []))
+    chinese_languages = {"普通话", "方言", "中文"}
+    score = 0.0
+
+    if detected_language:
+        if voice_language == detected_language:
+            score += 8.0
+        elif voice_language in chinese_languages:
+            score -= 8.0
+        elif voice_language:
+            score -= 2.0
+
+    if lang_hits:
+        if voice_language in lang_hits:
+            score += 4.0
+        elif voice_language:
+            score -= 0.5
+    return score
+
+
 def build_keyword_hits(text: str, keyword_rows: list[KeywordRow], rules: dict[str, Any]) -> dict[str, Any]:
     normalized = normalize_text(text)
     l1_hits: Counter[str] = Counter()
@@ -386,11 +462,7 @@ def compute_rule_score(voice: VoiceRecord, hit_info: dict[str, Any], rules: dict
 
     child_tag = rules.get("attribute_tags", {}).get("child", "")
     dialect_tag = rules.get("attribute_tags", {}).get("dialect", "")
-    if hit_info["lang_hits"]:
-        if voice.language in hit_info["lang_hits"]:
-            lang_score += 4.0
-        elif voice.language:
-            lang_score -= 0.5
+    lang_score += language_match_score(voice.language, hit_info)
 
     if child_tag and hit_info["has_child_hint"] and (child_tag in voice.scene_l1 or child_tag in voice.scene_l2):
         attr_score += 2.5
@@ -438,7 +510,9 @@ def build_matched_tags(item: dict[str, Any], hit_info: dict[str, Any]) -> dict[s
     matched_attributes: list[str] = []
     if float(rule_reason.get("attr_score", 0.0) or 0.0) > 0:
         matched_attributes = list(item.get("attributes", []))
-    language = bool(hit_info.get("lang_hits")) and item.get("language") in set(hit_info.get("lang_hits", []))
+    language = item.get("language") == hit_info.get("detected_language") or (
+        bool(hit_info.get("lang_hits")) and item.get("language") in set(hit_info.get("lang_hits", []))
+    )
     return {
         "scene_l1": scene_l1,
         "scene_l2": scene_l2,
@@ -451,6 +525,8 @@ def speaker_dedupe_key(speaker_name: str, rules: dict[str, Any]) -> str:
     value = normalize_text(speaker_name)
     for pattern in rules.get("speaker_dedupe_suffix_patterns", []):
         value = re.sub(pattern, "", value).strip()
+    for pattern in TECH_SUFFIX_PATTERNS:
+        value = re.sub(pattern, "", value, flags=re.IGNORECASE).strip()
     return value or speaker_name
 
 
@@ -471,6 +547,7 @@ class VoiceRecommender:
         self.rules = load_rule_settings(voice_rules_json)
         self.taxonomy = load_tag_taxonomy(voice_taxonomy_xlsx)
         self.voices = load_voice_records(voice_library_xlsx, self.taxonomy)
+        self.available_languages = {voice.language for voice in self.voices if voice.language}
         keyword_rows = load_keyword_rows(voice_keywords_xlsx, self.taxonomy)
         self.keyword_rows = build_augmented_keyword_rows(
             keyword_rows + load_scene_keyword_overrides(self.rules, self.taxonomy),
@@ -484,6 +561,8 @@ class VoiceRecommender:
 
     def build_rule_candidates(self, text: str, candidate_size: int) -> dict[str, Any]:
         hit_info = build_keyword_hits(text, self.keyword_rows, self.rules)
+        detected_language = detect_script_language(text, self.available_languages)
+        hit_info["detected_language"] = detected_language
         if hit_info["has_marketing_hint"]:
             for item in self.rules.get("marketing_backfill", []):
                 tag = item.get("tag")
@@ -535,8 +614,15 @@ class VoiceRecommender:
                 stage = "global_fallback"
                 filtered = scored
 
+        if detected_language:
+            language_matched = [item for item in filtered if item[0].language == detected_language]
+            if language_matched:
+                stage = f"{stage}_language_strict"
+                filtered = language_matched + [item for item in filtered if item[0].language != detected_language]
+
         candidates = []
-        for index, (voice, score, reason) in enumerate(filtered[:candidate_size]):
+        candidate_limit = len(language_matched) if detected_language and language_matched else candidate_size
+        for index, (voice, score, reason) in enumerate(filtered[:candidate_limit]):
             candidates.append(
                 {
                     "candidate_index": index,
@@ -559,6 +645,7 @@ class VoiceRecommender:
                 "l1_hits": dict(hit_info["l1_hits"]),
                 "l2_hits": dict(hit_info["l2_hits"]),
                 "lang_hits": hit_info["lang_hits"],
+                "detected_language": detected_language,
                 "has_child_hint": hit_info["has_child_hint"],
                 "has_dialect_hint": hit_info["has_dialect_hint"],
                 "has_service_hint": hit_info["has_service_hint"],
@@ -668,17 +755,32 @@ class VoiceRecommender:
             fallback["final_score"] = float(fallback["rule_score"])
             merged.append(fallback)
 
-        merged.sort(key=lambda item: float(item["final_score"]), reverse=True)
-        deduped: list[dict[str, Any]] = []
-        seen_speakers: set[str] = set()
+        best_by_speaker: dict[str, dict[str, Any]] = {}
         for item in merged:
             dedupe_key = speaker_dedupe_key(item["speaker_name"], self.rules)
-            if dedupe_key in seen_speakers:
+            current = best_by_speaker.get(dedupe_key)
+            item["_dedupe_tech_rank"] = tech_rank(str(item.get("tech_desc", "")), self.rules)
+            if current is None:
+                best_by_speaker[dedupe_key] = item
                 continue
-            seen_speakers.add(dedupe_key)
-            deduped.append(item)
-            if len(deduped) >= top_k:
-                break
+
+            current_key = (
+                float(current.get("_dedupe_tech_rank", 0.0)),
+                float(current.get("final_score", 0.0)),
+                -int(current.get("candidate_index", 999999)),
+            )
+            item_key = (
+                float(item.get("_dedupe_tech_rank", 0.0)),
+                float(item.get("final_score", 0.0)),
+                -int(item.get("candidate_index", 999999)),
+            )
+            if item_key > current_key:
+                best_by_speaker[dedupe_key] = item
+
+        deduped = sorted(best_by_speaker.values(), key=lambda item: float(item["final_score"]), reverse=True)
+        for item in deduped:
+            item.pop("_dedupe_tech_rank", None)
+        deduped = deduped[:top_k]
         return deduped
 
 

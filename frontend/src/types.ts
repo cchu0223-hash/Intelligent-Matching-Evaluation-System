@@ -43,8 +43,13 @@ export type FeedbackPayload = {
 
 export type SceneFeedbackPayload = {
   request_id: string;
-  suggested_scene_l1?: string;
-  suggested_scene_l2?: string;
+  suggested_scene_l1: string[];
+  suggested_scene_l2: string[];
   suggested_keywords: string;
   suggestion?: string;
+};
+
+export type TaxonomyResponse = {
+  scene_l1: string[];
+  scene_l2: string[];
 };

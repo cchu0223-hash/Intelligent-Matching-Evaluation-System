@@ -187,8 +187,8 @@ class Database:
         self,
         *,
         request_id: str,
-        suggested_scene_l1: str | None,
-        suggested_scene_l2: str | None,
+        suggested_scene_l1: list[str],
+        suggested_scene_l2: list[str],
         suggested_keywords: str,
         suggestion: str | None,
     ) -> str:
@@ -204,8 +204,8 @@ class Database:
                 (
                     feedback_id,
                     request_id,
-                    suggested_scene_l1,
-                    suggested_scene_l2,
+                    json.dumps(suggested_scene_l1, ensure_ascii=False),
+                    json.dumps(suggested_scene_l2, ensure_ascii=False),
                     suggested_keywords,
                     suggestion,
                     utc_now(),

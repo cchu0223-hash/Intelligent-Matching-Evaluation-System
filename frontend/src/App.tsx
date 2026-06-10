@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
-import { recommendVoice, submitFeedback, submitSceneFeedback } from './api';
-import type { FeedbackPayload, Recommendation, RecommendResponse, SceneFeedbackPayload } from './types';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchTaxonomy, recommendVoice, submitFeedback, submitSceneFeedback } from './api';
+import type { FeedbackPayload, Recommendation, RecommendResponse, SceneFeedbackPayload, TaxonomyResponse } from './types';
 
 const MAX_TEXT_LENGTH = 15000;
 const NAV_ITEMS = [
@@ -21,10 +21,11 @@ type FeedbackState = {
 };
 
 type SceneFeedbackState = {
-  suggested_scene_l1: string;
-  suggested_scene_l2: string;
+  suggested_scene_l1: string[];
+  suggested_scene_l2: string[];
   suggested_keywords: string;
   suggestion: string;
+  isOpen: boolean;
   submitted?: boolean;
   status?: string;
 };
@@ -58,25 +59,68 @@ function tagList(tags: string[], matchedTags: string[] = [], empty = '未标注'
   ));
 }
 
-function SceneFeedbackForm({ requestId }: { requestId: string }) {
+function toggleSelection(values: string[], value: string) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function SceneOptionGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div className="scene-option-section">
+      <div className="scene-option-header">
+        <span>{label}</span>
+        <strong>已选 {selected.length}</strong>
+      </div>
+      <div className="scene-option-group" role="group" aria-label={label}>
+        {options.length ? (
+          options.map((option) => (
+            <button
+              className={selected.includes(option) ? 'scene-option selected' : 'scene-option'}
+              key={option}
+              type="button"
+              onClick={() => onToggle(option)}
+            >
+              {option}
+            </button>
+          ))
+        ) : (
+          <span className="scene-option-empty">标签体系加载中或暂不可用</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SceneFeedbackForm({ requestId, taxonomy }: { requestId: string; taxonomy: TaxonomyResponse | null }) {
   const [state, setState] = useState<SceneFeedbackState>({
-    suggested_scene_l1: '',
-    suggested_scene_l2: '',
+    suggested_scene_l1: [],
+    suggested_scene_l2: [],
     suggested_keywords: '',
     suggestion: '',
+    isOpen: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const canSubmit = Boolean(state.suggested_keywords.trim()) && !isSubmitting;
+  const hasSelectedScene = state.suggested_scene_l1.length > 0 || state.suggested_scene_l2.length > 0;
+  const canSubmit = hasSelectedScene && Boolean(state.suggested_keywords.trim()) && !isSubmitting;
 
   async function handleSubmit() {
-    if (!state.suggested_keywords.trim()) {
+    if (!canSubmit) {
       return;
     }
     setIsSubmitting(true);
     const payload: SceneFeedbackPayload = {
       request_id: requestId,
-      suggested_scene_l1: state.suggested_scene_l1.trim() || undefined,
-      suggested_scene_l2: state.suggested_scene_l2.trim() || undefined,
+      suggested_scene_l1: state.suggested_scene_l1,
+      suggested_scene_l2: state.suggested_scene_l2,
       suggested_keywords: state.suggested_keywords.trim(),
       suggestion: state.suggestion.trim() || undefined,
     };
@@ -99,31 +143,62 @@ function SceneFeedbackForm({ requestId }: { requestId: string }) {
     );
   }
 
+  if (!state.isOpen) {
+    return (
+      <div className="scene-feedback scene-feedback-collapsed">
+        <button
+          className="scene-feedback-toggle"
+          type="button"
+          aria-expanded="false"
+          onClick={() => setState((current) => ({ ...current, isOpen: true, status: undefined }))}
+        >
+          <span>场景识别不准确？</span>
+          <strong>点击补充建议场景和关键词</strong>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="scene-feedback">
-      <div>
-        <h3>场景识别不准确？</h3>
-        <p>请选择你认为更合适的场景，并填写原文中应该命中的关键词，便于后续补充关键词库。</p>
+      <div className="scene-feedback-head">
+        <div>
+          <h3>场景识别不准确？</h3>
+          <p>请选择你认为更合适的场景，并填写原文中应该命中的关键词，便于后续补充关键词库。</p>
+        </div>
+        <button
+          className="ghost-button"
+          type="button"
+          onClick={() => setState((current) => ({ ...current, isOpen: false, status: undefined }))}
+        >
+          收起
+        </button>
       </div>
       <div className="scene-feedback-grid">
-        <label>
-          <span>建议一级场景</span>
-          <input
-            maxLength={80}
-            placeholder="例如：角色演绎"
-            value={state.suggested_scene_l1}
-            onChange={(event) => setState((current) => ({ ...current, suggested_scene_l1: event.target.value, status: undefined }))}
-          />
-        </label>
-        <label>
-          <span>建议二级场景</span>
-          <input
-            maxLength={80}
-            placeholder="例如：有声小说"
-            value={state.suggested_scene_l2}
-            onChange={(event) => setState((current) => ({ ...current, suggested_scene_l2: event.target.value, status: undefined }))}
-          />
-        </label>
+        <SceneOptionGroup
+          label="建议一级场景"
+          options={taxonomy?.scene_l1 ?? []}
+          selected={state.suggested_scene_l1}
+          onToggle={(value) =>
+            setState((current) => ({
+              ...current,
+              suggested_scene_l1: toggleSelection(current.suggested_scene_l1, value),
+              status: undefined,
+            }))
+          }
+        />
+        <SceneOptionGroup
+          label="建议二级场景"
+          options={taxonomy?.scene_l2 ?? []}
+          selected={state.suggested_scene_l2}
+          onToggle={(value) =>
+            setState((current) => ({
+              ...current,
+              suggested_scene_l2: toggleSelection(current.suggested_scene_l2, value),
+              status: undefined,
+            }))
+          }
+        />
       </div>
       <label>
         <span>应命中的关键词</span>
@@ -147,15 +222,17 @@ function SceneFeedbackForm({ requestId }: { requestId: string }) {
         {isSubmitting ? '提交中' : '提交场景反馈'}
       </button>
       {state.status ? <p className="feedback-status">{state.status}</p> : null}
+      {!hasSelectedScene ? <p className="feedback-status">请选择至少一个一级或二级场景。</p> : null}
     </div>
   );
 }
 
-function DebugPanel({ response }: { response: RecommendResponse }) {
+function DebugPanel({ response, taxonomy }: { response: RecommendResponse; taxonomy: TaxonomyResponse | null }) {
   const debug = response.debug_tags;
   const l1Hits = asRecord(debug.l1_hits);
   const l2Hits = asRecord(debug.l2_hits);
   const langHits = Array.isArray(debug.lang_hits) ? (debug.lang_hits as string[]) : [];
+  const detectedLanguage = typeof debug.detected_language === 'string' ? debug.detected_language : '';
   const matchedPairs = Array.isArray(debug.matched_pairs) ? debug.matched_pairs.slice(0, 6) : [];
 
   return (
@@ -177,7 +254,7 @@ function DebugPanel({ response }: { response: RecommendResponse }) {
         </div>
         <div>
           <span>语言</span>
-          <strong>{langHits.length ? langHits.join('、') : '未命中'}</strong>
+          <strong>{detectedLanguage || (langHits.length ? langHits.join('、') : '未命中')}</strong>
         </div>
         <div>
           <span>营销信号</span>
@@ -215,7 +292,7 @@ function DebugPanel({ response }: { response: RecommendResponse }) {
         )}
       </div>
       {response.llm_error ? <p className="error-text">DeepSeek 重排失败，已回退规则排序：{response.llm_error}</p> : null}
-      <SceneFeedbackForm requestId={response.request_id} />
+      <SceneFeedbackForm requestId={response.request_id} taxonomy={taxonomy} />
     </section>
   );
 }
@@ -347,12 +424,31 @@ export default function App() {
   const [text, setText] = useState('');
   const [response, setResponse] = useState<RecommendResponse | null>(null);
   const [feedback, setFeedback] = useState<Record<string, FeedbackState>>({});
+  const [taxonomy, setTaxonomy] = useState<TaxonomyResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const remaining = MAX_TEXT_LENGTH - text.length;
   const canRecommend = text.trim().length > 0 && remaining >= 0 && !isLoading;
   const sortedRecommendations = useMemo(() => response?.recommendations ?? [], [response]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchTaxonomy()
+      .then((next) => {
+        if (isMounted) {
+          setTaxonomy(next);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setTaxonomy({ scene_l1: [], scene_l2: [] });
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   async function handleRecommend() {
     setIsLoading(true);
@@ -458,7 +554,7 @@ export default function App() {
           {error ? <p className="error-text">{error}</p> : null}
         </section>
 
-        {response ? <DebugPanel response={response} /> : null}
+        {response ? <DebugPanel response={response} taxonomy={taxonomy} /> : null}
 
         {response && sortedRecommendations.length ? (
           <section className="recommendations" aria-label="推荐音色">
