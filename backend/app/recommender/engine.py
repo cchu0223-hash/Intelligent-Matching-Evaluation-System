@@ -53,6 +53,27 @@ TECH_SUFFIX_PATTERNS = [
     r"[-－—_]\s*默认\s*$",
 ]
 
+MARKETING_L1_TAGS = {"商业广告"}
+MARKETING_L2_TAGS = {"营销风格", "带货种草", "口播"}
+MARKETING_SHORT_VIDEO_TAGS = {"短视频"}
+MARKETING_INTENT_TERMS = {
+    "生鲜特卖",
+    "本地超市",
+    "平价惠民",
+    "限时特惠",
+    "低价秒杀",
+    "批量采购",
+    "更划算",
+    "性价比拉满",
+    "闭眼入",
+    "新鲜直采",
+    "活动力度",
+    "特卖活动",
+    "直播间",
+    "专属破底价",
+    "手慢无",
+}
+
 
 def load_rule_settings(path: Path | None) -> dict[str, Any]:
     if not path or not path.exists():
@@ -328,15 +349,15 @@ def marketing_focus_score(voice: VoiceRecord, has_marketing_hint: bool, rules: d
         return 0.0
     score = 0.0
     focus = rules.get("marketing_focus", {})
-    l1_tags = set(focus.get("l1_tags", []))
-    l2_tags = set(focus.get("l2_tags", []))
-    short_video_tags = set(focus.get("short_video_tags", []))
+    l1_tags = set(focus.get("l1_tags", [])) | MARKETING_L1_TAGS
+    l2_tags = set(focus.get("l2_tags", [])) | MARKETING_L2_TAGS
+    short_video_tags = set(focus.get("short_video_tags", [])) | MARKETING_SHORT_VIDEO_TAGS
     if any(tag in l1_tags for tag in voice.scene_l1) and len(voice.scene_l1) <= 3:
-        score += 3.0
+        score += 6.0
     if any(tag in l2_tags for tag in voice.scene_l2) and len(voice.scene_l2) <= 5:
-        score += 2.0
+        score += 4.0
     if any(tag in short_video_tags for tag in voice.scene_l1) and len(voice.scene_l1) <= 3:
-        score += 1.0
+        score += 2.0
     if len(voice.scene_l1) >= 6 or len(voice.scene_l2) >= 10:
         score -= 5.0
     return score
@@ -425,8 +446,10 @@ def build_keyword_hits(text: str, keyword_rows: list[KeywordRow], rules: dict[st
     formal_hints = intent_hints.get("formal", [])
     attribute_hints = rules.get("attribute_hints", {})
     marketing_score = sum(1 for keyword in marketing_hints if keyword in normalized)
+    marketing_score += sum(1 for keyword in MARKETING_INTENT_TERMS if keyword in normalized)
     price_pattern = rules.get("price_pattern", r"\d+(\.\d+)?")
     price_hit = bool(re.search(price_pattern, normalized))
+    has_marketing_scene_hit = any(tag in MARKETING_L1_TAGS for tag in l1_hits) or any(tag in MARKETING_L2_TAGS for tag in l2_hits)
     return {
         "l1_hits": l1_hits,
         "l2_hits": l2_hits,
@@ -435,8 +458,9 @@ def build_keyword_hits(text: str, keyword_rows: list[KeywordRow], rules: dict[st
         "has_child_hint": any(keyword in normalized for keyword in attribute_hints.get("child", [])),
         "has_dialect_hint": any(keyword in normalized for keyword in attribute_hints.get("dialect", [])),
         "has_service_hint": any(keyword in normalized for keyword in service_hints),
-        "has_marketing_hint": marketing_score >= 2 or (marketing_score >= 1 and price_hit),
+        "has_marketing_hint": has_marketing_scene_hit or marketing_score >= 2 or (marketing_score >= 1 and price_hit),
         "marketing_score": marketing_score,
+        "has_marketing_scene_hit": has_marketing_scene_hit,
         "price_hit": price_hit,
         "formal_score": sum(1 for keyword in formal_hints if keyword in normalized),
         "scene_weight_total": float(sum(l1_hits.values()) + sum(l2_hits.values())),
@@ -651,6 +675,7 @@ class VoiceRecommender:
                 "has_service_hint": hit_info["has_service_hint"],
                 "has_marketing_hint": hit_info["has_marketing_hint"],
                 "marketing_score": hit_info["marketing_score"],
+                "has_marketing_scene_hit": hit_info["has_marketing_scene_hit"],
                 "price_hit": hit_info["price_hit"],
                 "formal_score": hit_info["formal_score"],
                 "scene_weight_total": round(hit_info["scene_weight_total"], 4),
@@ -688,7 +713,7 @@ class VoiceRecommender:
             candidates=rule_pack["candidates"],
             llm_ranked=llm_ranked,
             top_k=top_k,
-            rule_weight=0.7 if rule_pack["hit_info"]["has_marketing_hint"] else 0.4,
+            rule_weight=0.8 if rule_pack["hit_info"]["has_marketing_hint"] else 0.4,
         )
         recommendations = [
             Recommendation(
